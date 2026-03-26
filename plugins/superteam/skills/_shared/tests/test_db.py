@@ -29,7 +29,7 @@ class TestBatchInsertChunks:
             {"content": "c2", "embedding": [0.2]*1536, "creator_id": 5,
              "doc_type": "prd", "file_name": "f.md", "metadata": {}, "source_sync_id": 1},
         ]
-        with patch("db.execute_values"):
+        with patch("psycopg2.extras.execute_values"):
             count = db.batch_insert_chunks(mock_conn, chunks)
         assert count == 2
         mock_cur.close.assert_called_once()
@@ -63,7 +63,7 @@ class TestIngestDocChunks:
             {"content": "c1", "embedding": [0.1]*1536, "creator_id": 5,
              "doc_type": "guide", "file_name": "g.md", "metadata": {}, "source_sync_id": 42},
         ]
-        with patch("db.execute_values"):
+        with patch("psycopg2.extras.execute_values"):
             result = db.ingest_doc_chunks(mock_conn, source_sync_id=42, chunks=chunks)
         assert result["deleted"] == 3
         assert result["inserted"] == 1
@@ -76,7 +76,7 @@ class TestIngestDocChunks:
         # First call (DELETE) succeeds, second call (execute_values in batch_insert) fails
         mock_cur.rowcount = 0
         # We need to make batch_insert_chunks fail
-        with patch("db.execute_values", side_effect=Exception("insert failed")):
+        with patch("psycopg2.extras.execute_values", side_effect=Exception("insert failed")):
             try:
                 db.ingest_doc_chunks(mock_conn, 42, [{"content": "c1", "embedding": [0.1]*1536,
                     "creator_id": 5, "doc_type": "prd", "file_name": "f", "metadata": {}, "source_sync_id": 42}])

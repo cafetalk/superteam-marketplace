@@ -36,3 +36,13 @@ class TestEnv:
              patch("pathlib.Path.home", return_value=tmp_path):
             config._CONFIG_CACHE = None
             assert config.env("KEY") == "from_env"
+
+    def test_reads_superteam_config(self, tmp_path):
+        """config.py should read ~/.superteam/config."""
+        superteam_dir = tmp_path / ".superteam"
+        superteam_dir.mkdir()
+        (superteam_dir / "config").write_text("SUPERTEAM_MCP_URL=https://example.com/mcp\n")
+        with patch.dict("os.environ", {}, clear=True), \
+             patch("pathlib.Path.home", return_value=tmp_path):
+            config._CONFIG_CACHE = None
+            assert config.env("SUPERTEAM_MCP_URL") == "https://example.com/mcp"

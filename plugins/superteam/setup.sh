@@ -56,63 +56,65 @@ else
 fi
 
 "$VENV_DIR/bin/pip" install --quiet --upgrade pip
-"$VENV_DIR/bin/pip" install --quiet psycopg2-binary
-echo -e "  ${GREEN}✓${NC} psycopg2-binary 已安装"
+"$VENV_DIR/bin/pip" install --quiet httpx
+echo -e "  ${GREEN}✓${NC} httpx 已安装"
 
 # ------------------------------------------------------------------
-# Step 3: 配置数据库连接
+# Step 3: 配置 MCP 连接
 # ------------------------------------------------------------------
-echo -e "${CYAN}[3/5] 配置数据库连接...${NC}"
+echo -e "${CYAN}[3/5] 配置 MCP 连接...${NC}"
 
 CONFIG_DIR="$HOME/.superteam"
 CONFIG_FILE="$CONFIG_DIR/config"
 
-# 检查是否已有配置
-if [ -f "$CONFIG_FILE" ] && grep -q "KB_TREX_PG_URL" "$CONFIG_FILE" 2>/dev/null; then
-    echo -e "  ${GREEN}✓${NC} 已有数据库配置，跳过"
-    PG_URL=$(grep "KB_TREX_PG_URL" "$CONFIG_FILE" | cut -d'=' -f2-)
+MCP_URL="https://superteam-kb-mcp.dipbit.xyz/mcp"
+MCP_TOKEN=""
+
+if [ -f "$CONFIG_FILE" ] && grep -q "SUPERTEAM_API_TOKEN" "$CONFIG_FILE" 2>/dev/null; then
+    echo -e "  ${GREEN}✓${NC} 已有 MCP 配置，跳过"
+    MCP_TOKEN=$(grep "SUPERTEAM_API_TOKEN" "$CONFIG_FILE" | cut -d'=' -f2-)
 else
     echo ""
-    echo "  请输入 PostgreSQL 数据库连接串："
-    echo "  格式: postgresql://user:pass@host:port/dbname"
+    echo -e "  MCP 服务地址: ${GREEN}$MCP_URL${NC}"
     echo ""
-    read -p "  KB_TREX_PG_URL=" PG_URL
+    echo "  请输入 API Token（由管理员提供）："
+    read -p "  SUPERTEAM_API_TOKEN=" MCP_TOKEN
 
-    if [ -z "$PG_URL" ]; then
-        echo -e "  ${RED}⚠ 未输入连接串，跳过数据库配置。${NC}"
+    if [ -z "$MCP_TOKEN" ]; then
+        echo -e "  ${RED}⚠ Token 未填写，跳过。${NC}"
         echo "  稍后可手动编辑 $CONFIG_FILE"
     else
         mkdir -p "$CONFIG_DIR"
-        echo "KB_TREX_PG_URL=$PG_URL" > "$CONFIG_FILE"
+        cat > "$CONFIG_FILE" <<CONF
+SUPERTEAM_MCP_URL=$MCP_URL
+SUPERTEAM_API_TOKEN=$MCP_TOKEN
+CONF
         echo -e "  ${GREEN}✓${NC} 已保存到 $CONFIG_FILE"
     fi
 fi
 
 # 测试连接
-if [ -n "$PG_URL" ]; then
-    CONNECTION_TEST=$(export KB_TREX_PG_URL="$PG_URL" && "$VENV_DIR/bin/python" -c "
-import os, psycopg2
+if [ -n "$MCP_URL" ] && [ -n "$MCP_TOKEN" ]; then
+    HEALTH_CHECK=$("$VENV_DIR/bin/python" -c "
+import httpx
 try:
-    conn = psycopg2.connect(os.environ['KB_TREX_PG_URL'])
-    cur = conn.cursor()
-    cur.execute('SET search_path TO trex_hub, public')
-    conn.commit()
-    cur.execute('SELECT count(*) FROM kb_trex_team_docs')
-    count = cur.fetchone()[0]
-    cur.close()
-    conn.close()
-    print(f'OK:{count}')
+    base = '${MCP_URL}'.rsplit('/mcp', 1)[0]
+    r = httpx.get(f'{base}/health', timeout=10)
+    if r.status_code == 200:
+        print(f'OK:{r.json().get(\"version\", \"unknown\")}')
+    else:
+        print(f'FAIL:HTTP {r.status_code}')
 except Exception as e:
     print(f'FAIL:{e}')
 " 2>&1)
 
-    if [[ "$CONNECTION_TEST" == OK:* ]]; then
-        doc_count="${CONNECTION_TEST#OK:}"
-        echo -e "  ${GREEN}✓${NC} 数据库连接成功！知识库中有 ${doc_count} 条文档记录。"
+    if [[ "$HEALTH_CHECK" == OK:* ]]; then
+        version="${HEALTH_CHECK#OK:}"
+        echo -e "  ${GREEN}✓${NC} MCP 服务连接成功！版本: $version"
     else
-        error="${CONNECTION_TEST#FAIL:}"
-        echo -e "  ${RED}⚠ 数据库连接失败: $error${NC}"
-        echo "  可能是网络或 IP 白名单限制，不影响安装。连接问题后续排查。"
+        error="${HEALTH_CHECK#FAIL:}"
+        echo -e "  ${RED}⚠ MCP 连接失败: $error${NC}"
+        echo "  不影响安装。连接问题后续排查。"
     fi
 fi
 

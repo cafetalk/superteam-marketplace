@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
-团队文档向量检索：预计算向量 → pgvector 相似度搜索 → 输出 JSON。
-依赖：KB_TREX_PG_URL。
-向量由宿主 agent 预计算后通过 --embedding 参数传入。
+团队文档向量检索：自然语言问题 → 1536 维向量 → pgvector 相似度搜索 → 输出 JSON。
+依赖：KB_TREX_PG_URL；DASHSCOPE_API_KEY 或 OPENAI_API_KEY。
 """
 from __future__ import annotations
 
@@ -16,67 +15,13 @@ from pathlib import Path as _Path
 import sys as _sys
 _sys.path.insert(0, str(_Path(__file__).resolve().parent.parent.parent / "_shared"))
 from config import env
-
-
-def run_vector_search(conn, vec: list[float], top_k: int,
-                      doc_type: str | None, creator_id: int | None) -> list[dict]:
-    cur = conn.cursor()
-    vec_str = "[" + ",".join(str(x) for x in vec) + "]"
-
-    where_parts: list[str] = []
-    params: list = []
-    if doc_type:
-        where_parts.append("c.doc_type = %s")
-        params.append(doc_type)
-    if creator_id is not None:
-        where_parts.append("c.creator_id = %s")
-        params.append(creator_id)
-    where_clause = (" WHERE " + " AND ".join(where_parts)) if where_parts else ""
-
-    sql = (
-        "SELECT c.id, c.content, c.doc_type, c.file_name, c.creator_id, c.metadata, "
-        "(c.embedding <=> %s::vector) AS score, "
-        "s.source_type, s.source_url "
-        f"FROM kb_trex_team_docs c "
-        f"LEFT JOIN kb_trex_source_docs s ON c.source_sync_id = s.id"
-        f"{where_clause} "
-        "ORDER BY c.embedding <=> %s::vector LIMIT %s"
-    )
-    cur.execute(sql, [vec_str] + params + [vec_str, top_k])
-    columns = [desc[0] for desc in cur.description]
-    rows = [dict(zip(columns, row)) for row in cur.fetchall()]
-    for row in rows:
-        if isinstance(row.get("metadata"), dict):
-            pass
-        elif row.get("metadata"):
-            try:
-                row["metadata"] = json.loads(str(row["metadata"]))
-            except (json.JSONDecodeError, TypeError):
-                pass
-        row["score"] = float(row["score"]) if row.get("score") is not None else None
-
-        meta = row.get("metadata") or {}
-        if isinstance(meta, dict):
-            row["title"] = meta.get("title", row.get("file_name", ""))
-            row["chunk_index"] = meta.get("chunk_index")
-            row["total_chunks"] = meta.get("total_chunks")
-            if not row.get("source_type"):
-                row["source_type"] = meta.get("source", "")
-        else:
-            row["title"] = row.get("file_name", "")
-        row.setdefault("source_type", "")
-        row.setdefault("source_url", None)
-        del row["metadata"]
-    cur.close()
-    return rows
+from embedding import get_embedding
+from queries import query_search_docs
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Vector search over kb_trex_team_docs.")
     parser.add_argument("query", help="Natural language question or search phrase.")
-    parser.add_argument("--embedding", required=True,
-                        help="Pre-computed 1536-dim embedding vector as JSON array. "
-                             "Must be provided by the host agent.")
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--doc-type", choices=[
         "prd", "tech-design", "reference", "guide", "explanation",
@@ -93,14 +38,12 @@ def main() -> int:
         return 1
 
     try:
-        embedding = json.loads(args.embedding)
-    except (json.JSONDecodeError, TypeError) as e:
-        print(f"Invalid --embedding JSON: {e}", file=sys.stderr)
+        embedding = get_embedding(args.query)
+    except Exception as e:
+        print(f"Embedding failed: {e}", file=sys.stderr)
         return 1
-    if not isinstance(embedding, list) or len(embedding) != 1536:
-        print(f"Embedding must be a 1536-dim array, got {type(embedding).__name__} "
-              f"len={len(embedding) if isinstance(embedding, list) else 'N/A'}",
-              file=sys.stderr)
+    if len(embedding) != 1536:
+        print(f"Embedding dim {len(embedding)} != 1536", file=sys.stderr)
         return 1
 
     import psycopg2
@@ -110,7 +53,7 @@ def main() -> int:
     conn.commit()
 
     try:
-        rows = run_vector_search(conn, embedding, args.top_k, args.doc_type, args.creator_id)
+        rows = query_search_docs(conn, embedding, args.top_k, args.doc_type, args.creator_id)
     except Exception as e:
         print(f"Search failed: {e}", file=sys.stderr)
         return 1

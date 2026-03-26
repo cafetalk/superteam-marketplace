@@ -7,7 +7,6 @@ import json
 import sys
 from pathlib import Path
 
-# Allow running from scripts/ dir without installing package
 _SHARED_DIR = Path(__file__).parent.parent.parent / "_shared"
 if str(_SHARED_DIR) not in sys.path:
     sys.path.insert(0, str(_SHARED_DIR))
@@ -22,43 +21,19 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=50, help="Max rows (default 50).")
     args = parser.parse_args()
 
-    conn_url = env("KB_TREX_PG_URL")
-    if not conn_url:
-        print("KB_TREX_PG_URL not set.", file=sys.stderr)
-        return 1
+    from db import get_connection
+    from queries import query_list_source_docs
 
-    import psycopg2
-    conn = psycopg2.connect(conn_url)
-    cur = conn.cursor()
-    cur.execute("SET search_path TO trex_hub, public")
-
-    where_parts: list[str] = []
-    params: list = []
-    if args.source_type:
-        where_parts.append("source_type = %s")
-        params.append(args.source_type)
-    if args.name:
-        where_parts.append("file_name ILIKE %s")
-        params.append(f"%{args.name}%")
-
-    where_clause = (" WHERE " + " AND ".join(where_parts)) if where_parts else ""
-    params.append(args.limit)
-    cur.execute(
-        f"SELECT id, source_type, source_doc_id, file_name, "
-        f"last_edited_at, last_synced_at, sync_version "
-        f"FROM kb_trex_source_docs{where_clause} "
-        f"ORDER BY last_synced_at DESC LIMIT %s",
-        params,
-    )
-    columns = [desc[0] for desc in cur.description]
-    rows = [dict(zip(columns, row)) for row in cur.fetchall()]
-    cur.close()
-    conn.close()
-
-    for row in rows:
-        for k in ("last_edited_at", "last_synced_at"):
-            if row.get(k):
-                row[k] = str(row[k])
+    conn = get_connection()
+    try:
+        rows = query_list_source_docs(
+            conn,
+            source_type=args.source_type or None,
+            name=args.name or None,
+            limit=args.limit,
+        )
+    finally:
+        conn.close()
 
     print(json.dumps(rows, ensure_ascii=False, indent=2))
     return 0

@@ -1,12 +1,6 @@
----
-name: insight-git
-description: Use when querying local git context — commit history, branch info, code changes
----
+# insight-git
 
-# Git 洞察 (Coming Soon)
+Local git context provider (planned).
 
-读取本地 git 仓库上下文，提供 commit 历史、分支信息、代码变更等查询能力。
-
-## 状态
-
-> **规划中** — 功能待设计和实现。
+This skill will provide git repository insights such as recent commits,
+branch status, and contributor activity for the Hub.

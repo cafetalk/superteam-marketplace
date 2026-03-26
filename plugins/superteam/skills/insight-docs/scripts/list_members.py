@@ -38,52 +38,22 @@ def _get_conn():
 
 def cmd_list(args) -> int:
     """List members with optional filters."""
-    conn_url = env("KB_TREX_PG_URL")
-    if not conn_url:
-        print("KB_TREX_PG_URL not set.", file=sys.stderr)
-        return 1
-
-    import psycopg2
-    conn = psycopg2.connect(conn_url)
-    cur = conn.cursor()
-    cur.execute("SET search_path TO trex_hub, public")
-
-    where_parts: list[str] = []
-    params: list = []
-
-    user_id = getattr(args, "user_id", None)
-    name = getattr(args, "name", "") or ""
-    role = getattr(args, "role", "") or ""
-
-    if user_id is not None:
-        where_parts.append("user_id = %s")
-        params.append(user_id)
-    if name:
-        where_parts.append(
-            "(real_name ILIKE %s OR username ILIKE %s"
-            " OR real_name_en ILIKE %s OR email ILIKE %s)"
-        )
-        params.extend([f"%{name}%"] * 4)
-    if role:
-        where_parts.append("role = %s")
-        params.append(role)
-
-    where_clause = (" WHERE " + " AND ".join(where_parts)) if where_parts else ""
-    cur.execute(
-        f"SELECT user_id, username, real_name, real_name_en, email, role,"
-        f" verified, aliases, created_at"
-        f" FROM kb_trex_team_members{where_clause} ORDER BY user_id",
-        params,
-    )
-    columns = [desc[0] for desc in cur.description]
-    rows = [dict(zip(columns, row)) for row in cur.fetchall()]
-    cur.close()
-    conn.close()
-
-    for row in rows:
-        if row.get("created_at"):
-            row["created_at"] = str(row["created_at"])
-
+    from db import _use_mcp, list_members as mcp_list_members
+    if _use_mcp():
+        name = getattr(args, "name", "") or None
+        rows = mcp_list_members(name_query=name)
+    else:
+        from queries import query_list_members
+        conn = _get_conn()
+        try:
+            rows = query_list_members(
+                conn,
+                name=getattr(args, "name", "") or None,
+                role=getattr(args, "role", "") or None,
+                user_id=getattr(args, "user_id", None),
+            )
+        finally:
+            conn.close()
     print(json.dumps(rows, ensure_ascii=False, indent=2))
     return 0
 

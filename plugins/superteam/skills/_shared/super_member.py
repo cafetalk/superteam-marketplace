@@ -1,17 +1,29 @@
-"""Smart team member resolver — exact match + alias cache only.
+"""Smart team member resolver with LLM fallback.
 
 Resolution order:
   1. Exact match (real_name, real_name_en, username, email, aliases) — case-insensitive
   2. Email parameter override
   3. Alias cache (alias.lower(), platform) → user_id
-  4. In-memory dedup cache
-  5. Fallback — create unverified member, never block
+  4. In-memory dedup cache — avoids repeated LLM calls per sync run
+  5. LLM match — uses DashScope qwen-plus to find fuzzy match
+  6. Fallback — create unverified member, never block
 """
 from __future__ import annotations
 import json
+import os
 from typing import Optional
 
 from config import env
+
+
+def _ensure_dashscope_key() -> bool:
+    if os.environ.get("DASHSCOPE_API_KEY"):
+        return True
+    key = env("DASHSCOPE_API_KEY")
+    if key:
+        os.environ["DASHSCOPE_API_KEY"] = key
+        return True
+    return False
 
 
 class SuperMember:
@@ -28,7 +40,9 @@ class SuperMember:
             "exact": 0,
             "alias": 0,
             "dedup": 0,
+            "llm_match": 0,
             "new": 0,
+            "error": 0,
         }
         # Review queue items to flush
         self._review_queue: list[dict] = []
@@ -66,19 +80,43 @@ class SuperMember:
             self._stats["dedup"] += 1
             return self._dedup[dedup_key]
 
-        # Step 4: Fallback — create unverified member
-        self._stats["new"] += 1
-        result = self._create_unverified_member(stripped, email, platform)
-        self._review_queue.append({
-            "raw_name": stripped,
-            "email": email,
-            "platform": platform,
-            "resolved_user_id": result,
-            "reason": "no exact or alias match",
-            "status": "pending",
-        })
-        self._dedup[dedup_key] = result
-        return result
+        # Step 4: LLM match
+        try:
+            action, uid, reason = self._llm_match(stripped, email, platform)
+        except Exception:
+            self._stats["error"] += 1
+            result = self._create_unverified_member(stripped, email, platform)
+            self._dedup[dedup_key] = result
+            return result
+
+        if action == "match" and uid is not None:
+            self._stats["llm_match"] += 1
+            self._write_alias(stripped, platform, uid)
+            self._aliases[alias_key] = uid
+            self._review_queue.append({
+                "raw_name": stripped,
+                "email": email,
+                "platform": platform,
+                "resolved_user_id": uid,
+                "reason": reason,
+                "status": "approved",
+            })
+            self._dedup[dedup_key] = uid
+            return uid
+        else:
+            # "new" — create unverified member
+            self._stats["new"] += 1
+            result = self._create_unverified_member(stripped, email, platform)
+            self._review_queue.append({
+                "raw_name": stripped,
+                "email": email,
+                "platform": platform,
+                "resolved_user_id": result,
+                "reason": reason,
+                "status": "pending",
+            })
+            self._dedup[dedup_key] = result
+            return result
 
     def flush_review_queue(self) -> list[dict]:
         """Batch insert accumulated review items into kb_trex_member_review_queue.
@@ -196,6 +234,83 @@ class SuperMember:
 
         return None
 
+    def _llm_match(self, raw_name: str, email: Optional[str], platform: str) -> tuple[str, Optional[int], str]:
+        """Call DashScope LLM to match raw_name against known members.
+
+        Returns (action, user_id_or_None, reason).
+        action is "match" or "new".
+        """
+        try:
+            import dashscope
+            from dashscope import Generation
+        except ImportError:
+            raise RuntimeError("dashscope SDK not available") from None
+
+        if not _ensure_dashscope_key():
+            raise RuntimeError("DASHSCOPE_API_KEY not configured")
+
+        # Build a compact member list for the prompt (exclude sensitive fields)
+        members_for_prompt = []
+        for m in self._members:
+            members_for_prompt.append({
+                "user_id": m["user_id"],
+                "username": m.get("username"),
+                "real_name": m.get("real_name"),
+                "real_name_en": m.get("real_name_en"),
+                "email": m.get("email"),
+                "aliases": m.get("aliases") or [],
+            })
+
+        prompt = f"""你是团队成员匹配助手。判断新发现的文档作者是否为已有团队成员。
+
+已有成员列表：
+{json.dumps(members_for_prompt, ensure_ascii=False, indent=2)}
+
+新发现的作者：
+- 名字: {raw_name}
+- 邮箱: {email or "未知"}
+- 来源平台: {platform}
+
+请判断这个作者是否为列表中的某位成员。考虑以下匹配依据：
+- 中文名与英文名/拼音对应（如 "秦鹏" = "Peng Qin" = "allen.qin"）
+- 邮箱前缀与 username 对应
+- aliases 列表中的别名
+
+返回严格 JSON（不要 markdown）：
+{{"action": "match", "user_id": 19, "reason": "邮箱前缀 allen.qin 与 username 匹配"}}
+或
+{{"action": "new", "reason": "无法匹配到任何已有成员"}}"""
+
+        response = Generation.call(
+            model="qwen-plus",
+            prompt=prompt,
+            result_format="message",
+            temperature=0.0,
+            top_p=0.8,
+            seed=42,
+            max_tokens=256,
+        )
+
+        if response.status_code != 200:
+            raise RuntimeError(f"LLM API error: {response.status_code} {response.message}")
+
+        content = response.output.choices[0].message.content.strip()
+        # Strip any markdown code fences
+        if content.startswith("```"):
+            content = content.split("```")[1]
+            if content.startswith("json"):
+                content = content[4:]
+        content = content.strip()
+
+        parsed = json.loads(content)
+        action = parsed.get("action", "new")
+        uid = parsed.get("user_id")
+        reason = parsed.get("reason", "")
+
+        if action == "match" and uid is not None:
+            return "match", int(uid), reason
+        return "new", None, reason
+
     def _create_unverified_member(self, raw_name: str, email: Optional[str], platform: str = "") -> int:
         """INSERT an unverified member row and return its new user_id."""
         try:
@@ -246,3 +361,6 @@ class SuperMember:
             except Exception:
                 pass
 
+    def _fallback_create(self, raw_name: str, email: Optional[str], platform: str) -> int:
+        """Alias for _create_unverified_member used as explicit fallback label."""
+        return self._create_unverified_member(raw_name, email, platform)
