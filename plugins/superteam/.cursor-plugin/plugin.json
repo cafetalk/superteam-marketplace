@@ -1,0 +1,16 @@
+{
+  "name": "superteam",
+  "description": "Superteam Hub — team knowledge base query, semantic search, member insights",
+  "version": "1.0.0",
+  "author": {
+    "name": "Superteam"
+  },
+  "skills": [
+    "skills/hub",
+    "skills/insight-docs",
+    "skills/insight-data",
+    "skills/insight-git",
+    "skills/insight-linear",
+    "skills/weekly-report"
+  ]
+}
