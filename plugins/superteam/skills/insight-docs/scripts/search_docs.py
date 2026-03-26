@@ -32,33 +32,44 @@ def main() -> int:
     parser.add_argument("--output-format", choices=["json", "text"], default="json")
     args = parser.parse_args()
 
-    conn_url = env("KB_TREX_PG_URL")
-    if not conn_url:
-        print("KB_TREX_PG_URL not set.", file=sys.stderr)
-        return 1
+    from db import _use_mcp, search_docs
 
-    try:
-        embedding = get_embedding(args.query)
-    except Exception as e:
-        print(f"Embedding failed: {e}", file=sys.stderr)
-        return 1
-    if len(embedding) != 1536:
-        print(f"Embedding dim {len(embedding)} != 1536", file=sys.stderr)
-        return 1
+    if _use_mcp():
+        # MCP mode: server handles embedding + search
+        try:
+            rows = search_docs(args.query, creator_id=args.creator_id, limit=args.top_k)
+        except Exception as e:
+            print(f"MCP search failed: {e}", file=sys.stderr)
+            return 1
+    else:
+        # Direct mode: local embedding + psycopg2
+        conn_url = env("KB_TREX_PG_URL")
+        if not conn_url:
+            print("KB_TREX_PG_URL not set.", file=sys.stderr)
+            return 1
 
-    import psycopg2
-    conn = psycopg2.connect(conn_url)
-    cur = conn.cursor()
-    cur.execute("SET search_path TO trex_hub, public")
-    conn.commit()
+        try:
+            embedding = get_embedding(args.query)
+        except Exception as e:
+            print(f"Embedding failed: {e}", file=sys.stderr)
+            return 1
+        if len(embedding) != 1536:
+            print(f"Embedding dim {len(embedding)} != 1536", file=sys.stderr)
+            return 1
 
-    try:
-        rows = query_search_docs(conn, embedding, args.top_k, args.doc_type, args.creator_id)
-    except Exception as e:
-        print(f"Search failed: {e}", file=sys.stderr)
-        return 1
-    finally:
-        conn.close()
+        import psycopg2
+        conn = psycopg2.connect(conn_url)
+        cur = conn.cursor()
+        cur.execute("SET search_path TO trex_hub, public")
+        conn.commit()
+
+        try:
+            rows = query_search_docs(conn, embedding, args.top_k, args.doc_type, args.creator_id)
+        except Exception as e:
+            print(f"Search failed: {e}", file=sys.stderr)
+            return 1
+        finally:
+            conn.close()
 
     envelope = {
         "query": args.query,

@@ -21,19 +21,24 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=50, help="Max rows (default 50).")
     args = parser.parse_args()
 
-    from db import get_connection
-    from queries import query_list_source_docs
+    from db import _use_mcp
 
-    conn = get_connection()
-    try:
-        rows = query_list_source_docs(
-            conn,
-            source_type=args.source_type or None,
-            name=args.name or None,
-            limit=args.limit,
-        )
-    finally:
-        conn.close()
+    if _use_mcp():
+        from db import list_source_docs
+        rows = list_source_docs(filter=args.source_type or None)
+    else:
+        from db import get_connection
+        from queries import query_list_source_docs
+        conn = get_connection()
+        try:
+            rows = query_list_source_docs(
+                conn,
+                source_type=args.source_type or None,
+                name=args.name or None,
+                limit=args.limit,
+            )
+        finally:
+            conn.close()
 
     print(json.dumps(rows, ensure_ascii=False, indent=2))
     return 0

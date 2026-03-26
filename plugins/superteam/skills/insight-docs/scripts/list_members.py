@@ -59,17 +59,17 @@ def cmd_list(args) -> int:
 
 
 def cmd_resolve(args) -> int:
-    """Resolve a keyword to a user_id via SuperMember."""
+    """Resolve a keyword to a user_id via SuperMember or MCP."""
+    from db import _use_mcp
+
+    if _use_mcp():
+        from db import resolve_member
+        result = resolve_member(args.keyword)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+
     from super_member import SuperMember
-
-    conn_url = env("KB_TREX_PG_URL")
-    if not conn_url:
-        print("KB_TREX_PG_URL not set.", file=sys.stderr)
-        return 1
-
-    import psycopg2
-    conn = psycopg2.connect(conn_url)
-
+    conn = _get_conn()
     sm = SuperMember(conn)
     platform = getattr(args, "platform", "") or ""
     user_id = sm.resolve(args.keyword, platform=platform)
