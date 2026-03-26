@@ -7,16 +7,13 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
-from pathlib import Path
 
 from pathlib import Path as _Path
 import sys as _sys
 _sys.path.insert(0, str(_Path(__file__).resolve().parent.parent.parent / "_shared"))
 from config import env
-from embedding import get_embedding
-from queries import query_search_docs
+from db import _use_mcp, search_docs
 
 
 def main() -> int:
@@ -32,8 +29,6 @@ def main() -> int:
     parser.add_argument("--output-format", choices=["json", "text"], default="json")
     args = parser.parse_args()
 
-    from db import _use_mcp, search_docs
-
     if _use_mcp():
         # MCP mode: server handles embedding + search
         try:
@@ -48,6 +43,7 @@ def main() -> int:
             print("KB_TREX_PG_URL not set.", file=sys.stderr)
             return 1
 
+        from embedding import get_embedding
         try:
             embedding = get_embedding(args.query)
         except Exception as e:
@@ -57,6 +53,7 @@ def main() -> int:
             print(f"Embedding dim {len(embedding)} != 1536", file=sys.stderr)
             return 1
 
+        from queries import query_search_docs
         import psycopg2
         conn = psycopg2.connect(conn_url)
         cur = conn.cursor()
