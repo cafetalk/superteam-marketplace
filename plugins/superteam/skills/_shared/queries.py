@@ -60,7 +60,16 @@ def query_search_docs(conn, embedding_vec: list[float], top_k: int = 5,
         del row["metadata"]
 
     cur.close()
-    return rows
+
+    # Deduplicate: same content prefix across different file versions
+    seen: set[str] = set()
+    deduped: list[dict] = []
+    for row in rows:
+        key = row.get("content", "")[:200]
+        if key not in seen:
+            seen.add(key)
+            deduped.append(row)
+    return deduped
 
 
 def query_list_members(conn, name: str | None = None,
