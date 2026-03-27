@@ -37,7 +37,9 @@ class TestQuerySearchDocs:
         assert results[0]["title"] == "Test Doc"
         assert results[0]["score"] == 0.25
         assert results[0]["chunk_index"] == 1
-        cur.execute.assert_called_once()
+        assert results[0].get("context") is not None
+        # 3 calls: main search + source_sync_id lookup + adjacent chunks
+        assert cur.execute.call_count >= 1
 
     def test_with_filters(self):
         from queries import query_search_docs

@@ -69,7 +69,109 @@ def query_search_docs(conn, embedding_vec: list[float], top_k: int = 5,
         if key not in seen:
             seen.add(key)
             deduped.append(row)
+
+    # Adjacent chunk expansion: fetch surrounding chunks for richer context
+    if deduped:
+        _expand_adjacent_chunks(conn, deduped)
+
     return deduped
+
+
+def _expand_adjacent_chunks(conn, rows: list[dict], window: int = 1) -> None:
+    """Expand each search result with adjacent chunks from the same document.
+
+    Mutates rows in-place, adding a 'context' field with concatenated content
+    from chunk_index ± window.
+    """
+    cur = conn.cursor()
+    for row in rows:
+        ci = row.get("chunk_index")
+        if ci is None:
+            row["context"] = row.get("content", "")
+            row["context_range"] = None
+            continue
+
+        # Get source_sync_id from the chunk
+        cur.execute(
+            "SELECT source_sync_id FROM kb_trex_team_docs WHERE id = %s",
+            (row["id"],),
+        )
+        ssid_row = cur.fetchone()
+        if not ssid_row:
+            row["context"] = row.get("content", "")
+            row["context_range"] = None
+            continue
+
+        source_sync_id = ssid_row[0]
+        lo = max(0, ci - window)
+        hi = ci + window
+
+        cur.execute(
+            "SELECT content, (metadata->>'chunk_index')::int AS ci "
+            "FROM kb_trex_team_docs "
+            "WHERE source_sync_id = %s "
+            "  AND (metadata->>'chunk_index')::int BETWEEN %s AND %s "
+            "ORDER BY ci",
+            (source_sync_id, lo, hi),
+        )
+        adjacent = cur.fetchall()
+        if adjacent:
+            row["context"] = "\n\n".join(str(r[0]) for r in adjacent)
+            row["context_range"] = [lo, hi]
+        else:
+            row["context"] = row.get("content", "")
+            row["context_range"] = None
+    cur.close()
+
+
+def query_get_doc_chunks(conn, source_sync_id: int | None = None,
+                         file_name: str | None = None) -> dict | None:
+    """Retrieve all chunks for a document, ordered by chunk_index.
+
+    Returns {"file_name": str, "total_chunks": int, "full_text": str, "chunks": list}
+    or None if not found. Identify document by source_sync_id or file_name.
+    """
+    cur = conn.cursor()
+
+    if source_sync_id is not None:
+        cur.execute(
+            "SELECT id, content, file_name, (metadata->>'chunk_index')::int AS ci, "
+            "(metadata->>'total_chunks')::int AS tc "
+            "FROM kb_trex_team_docs "
+            "WHERE source_sync_id = %s "
+            "ORDER BY ci NULLS LAST",
+            (source_sync_id,),
+        )
+    elif file_name:
+        cur.execute(
+            "SELECT id, content, file_name, (metadata->>'chunk_index')::int AS ci, "
+            "(metadata->>'total_chunks')::int AS tc "
+            "FROM kb_trex_team_docs "
+            "WHERE file_name ILIKE %s "
+            "ORDER BY ci NULLS LAST",
+            (f"%{file_name}%",),
+        )
+    else:
+        cur.close()
+        return None
+
+    rows = cur.fetchall()
+    cur.close()
+
+    if not rows:
+        return None
+
+    chunks = [{"id": r[0], "content": r[1], "chunk_index": r[3]} for r in rows]
+    full_text = "\n\n".join(r[1] for r in rows)
+    fname = rows[0][2]
+    total = rows[0][4] or len(rows)
+
+    return {
+        "file_name": fname,
+        "total_chunks": total,
+        "full_text": full_text,
+        "chunks": chunks,
+    }
 
 
 def query_list_members(conn, name: str | None = None,
