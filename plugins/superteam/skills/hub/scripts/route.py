@@ -82,6 +82,19 @@ ROUTES: list[Route] = [
         description="已同步文档列表查询",
         pass_query=False,
     ),
+    # Deep research mode — fetch full original documents
+    Route(
+        skill="insight-docs",
+        script="insight-docs/scripts/deep_search.py",
+        keywords=[
+            "深入研究", "深入分析", "详细分析", "原文", "全文",
+            "文档创作", "写文档", "写报告", "起草", "撰写",
+            "deep", "research", "full text", "original",
+            "完整内容", "文档全文", "引用原文",
+        ],
+        description="深度搜索 — 获取原始文档全文 (研究/创作模式)",
+        status="live",
+    ),
     # Default fallback — insight-docs (semantic search)
     Route(
         skill="insight-docs",
@@ -111,8 +124,13 @@ def classify_intent(query: str) -> Route:
             best_score = score
             best_route = route
 
-    # If no keyword matched, fall back to insight-docs (last route)
+    # If no keyword matched, or matched route is not live, fall back to search_docs
     if best_score == 0 or best_route is None:
+        best_route = ROUTES[-1]
+    elif best_route.status in ("skeleton", "placeholder"):
+        # Route matched but skill is not ready — fall back to semantic search
+        print(f"  [hub] {best_route.skill} is {best_route.status}, falling back to search_docs",
+              file=sys.stderr)
         best_route = ROUTES[-1]
 
     return best_route

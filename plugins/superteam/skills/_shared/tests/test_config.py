@@ -46,3 +46,25 @@ class TestEnv:
              patch("pathlib.Path.home", return_value=tmp_path):
             config._CONFIG_CACHE = None
             assert config.env("SUPERTEAM_MCP_URL") == "https://example.com/mcp"
+
+    def test_source_docs_root_default(self, tmp_path):
+        with patch.dict(os.environ, {}, clear=True), \
+             patch("pathlib.Path.home", return_value=tmp_path):
+            config._CONFIG_CACHE = None
+            assert config.source_docs_root() == tmp_path / ".superteam" / "source_docs"
+
+    def test_source_docs_root_from_env(self, tmp_path):
+        custom = str(tmp_path / "sandbox" / "source_docs")
+        with patch.dict(os.environ, {"SUPERTEAM_SOURCE_DIR": custom}):
+            config._CONFIG_CACHE = None
+            assert config.source_docs_root() == Path(custom)
+
+    def test_source_docs_root_from_config_file(self, tmp_path):
+        superteam_dir = tmp_path / ".superteam"
+        superteam_dir.mkdir()
+        custom = str(tmp_path / "from_config" / "docs")
+        (superteam_dir / "config").write_text(f"SUPERTEAM_SOURCE_DIR={custom}\n")
+        with patch.dict(os.environ, {}, clear=True), \
+             patch("pathlib.Path.home", return_value=tmp_path):
+            config._CONFIG_CACHE = None
+            assert config.source_docs_root() == Path(custom)

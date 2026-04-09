@@ -1,5 +1,5 @@
 ---
-name: insight-docs
+name: superteam:insight-docs
 description: Use when querying the team knowledge base — semantic search over documents (PRD, weekly reports, design docs) and team member lookups
 ---
 

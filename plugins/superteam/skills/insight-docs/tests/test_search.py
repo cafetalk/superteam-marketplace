@@ -1,13 +1,11 @@
-"""Unit tests for search_docs.py (read-kb-pgsql)."""
+"""Unit tests for search_docs.py — tests both MCP and direct modes."""
 import json
 import sys
 import pytest
-from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 # conftest.py already added SCRIPTS_DIR to sys.path and stubbed psycopg2.
 
-# Stub shared modules so search_docs.py module-level imports succeed.
 _config_mod = MagicMock()
 _config_mod.env.return_value = "postgresql://fake/db"
 sys.modules.setdefault("config", _config_mod)
@@ -19,88 +17,75 @@ import search_docs as search_mod  # noqa: E402
 
 
 FAKE_VEC = [0.1] * 1536
+FAKE_RESULTS = [
+    {"id": 1, "content": "hello", "doc_type": "guide", "file_name": "file.md",
+     "creator_id": 5, "score": 0.1, "title": "file.md", "source_type": "",
+     "source_url": None, "context": "hello", "context_range": None},
+]
 
 
-def _make_mock_conn(rows, description=None):
-    """Return (conn, cur) where cur yields given rows."""
-    cur = MagicMock()
-    if description is None:
-        cur.description = [
-            ("id",), ("content",), ("doc_type",), ("file_name",),
-            ("creator_id",), ("metadata",), ("score",),
-        ]
-    else:
-        cur.description = description
-    cur.fetchall.return_value = rows
-    conn = MagicMock()
-    conn.cursor.return_value = cur
-    return conn, cur
+class TestMcpMode:
+    """When _use_mcp() returns True, search_docs delegates to db.search_docs."""
+
+    def test_mcp_search_returns_results(self):
+        with patch("search_docs._use_mcp", return_value=True), \
+             patch("search_docs.search_docs", return_value=FAKE_RESULTS) as mock_search, \
+             patch.object(sys, "argv", ["search_docs.py", "hello"]), \
+             patch("builtins.print") as mock_print:
+            code = search_mod.main()
+
+        assert code == 0
+        mock_search.assert_called_once()
+        output = mock_print.call_args[0][0]
+        envelope = json.loads(output)
+        assert envelope["total_results"] == 1
+        assert envelope["results"][0]["content"] == "hello"
+
+    def test_mcp_search_error_returns_1(self):
+        with patch("search_docs._use_mcp", return_value=True), \
+             patch("search_docs.search_docs", side_effect=Exception("fail")), \
+             patch.object(sys, "argv", ["search_docs.py", "hello"]), \
+             patch("builtins.print"):
+            code = search_mod.main()
+        assert code == 1
 
 
-# ---------------------------------------------------------------------------
-# TestRunVectorSearch
-# ---------------------------------------------------------------------------
+class TestDirectMode:
+    """When _use_mcp() returns False, script uses embedding + queries.query_search_docs."""
 
-class TestRunVectorSearch:
-    """run_vector_search(conn, vec, top_k, doc_type, creator_id) receives conn directly."""
+    def test_direct_search_returns_results(self):
+        mock_query = MagicMock(return_value=FAKE_RESULTS)
+        mock_conn = MagicMock()
 
-    def test_no_filters_builds_simple_query(self):
-        """No doc_type, no creator_id → query has no WHERE clause."""
-        rows = [(1, "hello", "guide", "file.md", 5, '{"k": "v"}', 0.1)]
-        conn, cur = _make_mock_conn(rows)
+        with patch("search_docs._use_mcp", return_value=False), \
+             patch("search_docs.env", return_value="postgresql://fake/db"), \
+             patch("embedding.get_embedding", return_value=FAKE_VEC), \
+             patch.dict(sys.modules, {"queries": MagicMock(query_search_docs=mock_query)}), \
+             patch("psycopg2.connect", return_value=mock_conn), \
+             patch.object(sys, "argv", ["search_docs.py", "hello", "--top-k", "3"]), \
+             patch("builtins.print") as mock_print:
+            code = search_mod.main()
 
-        results = search_mod.run_vector_search(conn, FAKE_VEC, 5, None, None)
+        assert code == 0
+        output = mock_print.call_args[0][0]
+        envelope = json.loads(output)
+        assert envelope["total_results"] == 1
 
-        executed_sql = cur.execute.call_args[0][0]
-        assert "WHERE" not in executed_sql
-        assert "ORDER BY" in executed_sql
-        assert "LIMIT" in executed_sql
-        assert len(results) == 1
+    def test_direct_mode_no_pg_url_returns_1(self):
+        with patch("search_docs._use_mcp", return_value=False), \
+             patch("search_docs.env", return_value=""), \
+             patch.object(sys, "argv", ["search_docs.py", "hello"]), \
+             patch("builtins.print"):
+            code = search_mod.main()
+        assert code == 1
 
-    def test_doc_type_filter_parameterized(self):
-        """doc_type='prd' → WHERE clause present and 'prd' appears in params."""
-        rows = [(2, "content", "prd", "spec.md", 3, None, 0.2)]
-        conn, cur = _make_mock_conn(rows)
+    def test_text_output_format(self):
+        with patch("search_docs._use_mcp", return_value=True), \
+             patch("search_docs.search_docs", return_value=FAKE_RESULTS), \
+             patch.object(sys, "argv", ["search_docs.py", "hello", "--output-format", "text"]), \
+             patch("builtins.print") as mock_print:
+            code = search_mod.main()
 
-        results = search_mod.run_vector_search(conn, FAKE_VEC, 5, "prd", None)
-
-        executed_sql = cur.execute.call_args[0][0]
-        executed_params = cur.execute.call_args[0][1]
-        assert "WHERE" in executed_sql
-        assert "doc_type = %s" in executed_sql
-        assert "prd" in executed_params
-
-    def test_combined_filters(self):
-        """Both doc_type and creator_id → WHERE clause with AND."""
-        rows = [(3, "text", "prd", "plan.md", 7, None, 0.3)]
-        conn, cur = _make_mock_conn(rows)
-
-        results = search_mod.run_vector_search(conn, FAKE_VEC, 5, "prd", 7)
-
-        executed_sql = cur.execute.call_args[0][0]
-        executed_params = cur.execute.call_args[0][1]
-        assert "doc_type = %s" in executed_sql
-        assert "creator_id = %s" in executed_sql
-        assert "AND" in executed_sql
-        assert "prd" in executed_params
-        assert 7 in executed_params
-
-    def test_metadata_dict_passthrough(self):
-        """metadata already a dict → returned unchanged (not re-parsed)."""
-        meta = {"already": "parsed"}
-        rows = [(4, "content", "guide", "file.md", 1, meta, 0.4)]
-        conn, cur = _make_mock_conn(rows)
-
-        results = search_mod.run_vector_search(conn, FAKE_VEC, 5, None, None)
-
-        assert results[0]["metadata"] is meta
-        assert isinstance(results[0]["metadata"], dict)
-
-    def test_none_score_handled(self):
-        """score is None → stays None (no float conversion error)."""
-        rows = [(5, "text", "guide", "file.md", 2, None, None)]
-        conn, cur = _make_mock_conn(rows)
-
-        results = search_mod.run_vector_search(conn, FAKE_VEC, 5, None, None)
-
-        assert results[0]["score"] is None
+        assert code == 0
+        all_output = " ".join(str(a) for a in [c[0][0] for c in mock_print.call_args_list if c[0]])
+        assert "hello" in all_output

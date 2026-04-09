@@ -1,5 +1,5 @@
 ---
-name: hub
+name: superteam:hub
 description: Use when answering user questions about the project, team, documents, or querying dynamic system data — routes to appropriate superteam skills
 ---
 

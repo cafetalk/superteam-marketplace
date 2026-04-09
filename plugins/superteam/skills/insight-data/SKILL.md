@@ -1,5 +1,5 @@
 ---
-name: insight-data
+name: superteam:insight-data
 description: Use when querying task management data — member contributions, iteration progress, task assignments via AGE Cypher graph queries with SQL fallback
 ---
 

@@ -1,4 +1,4 @@
-"""Unit tests for list_source_docs.py (read-kb-pgsql)."""
+"""Unit tests for list_source_docs.py — tests MCP and direct modes."""
 import json
 import sys
 import pytest
@@ -10,114 +10,88 @@ from unittest.mock import MagicMock, patch
 import list_source_docs as list_source_docs_mod  # noqa: E402
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-_COLUMNS = ("id", "source_type", "source_doc_id", "file_name", "last_edited_at", "last_synced_at", "sync_version")
-
-
-def _make_mock_conn(rows, columns=_COLUMNS):
-    cur = MagicMock()
-    cur.description = [(c,) for c in columns]
-    cur.fetchall.return_value = rows
-    conn = MagicMock()
-    conn.cursor.return_value = cur
-    return conn, cur
+FAKE_DOCS = [
+    {"id": 1, "source_type": "dingtalk", "source_doc_id": "doc-1",
+     "file_name": "README.md", "last_edited_at": None, "last_synced_at": None, "sync_version": 1},
+]
 
 
-def _run_main(argv, rows, columns=None):
-    """Run list_source_docs.main() and return (exit_code, output_lines, cursor)."""
-    if columns is None:
-        columns = _COLUMNS
-    conn, cur = _make_mock_conn(rows, columns)
+def _run_mcp(argv, mcp_return):
+    """Run main() in MCP mode."""
     output_lines = []
+    with patch.object(sys, "argv", ["list_source_docs.py"] + argv), \
+         patch("list_source_docs.env", return_value="postgresql://fake/db"), \
+         patch("db._use_mcp", return_value=True), \
+         patch("db.list_source_docs", return_value=mcp_return), \
+         patch("builtins.print", side_effect=lambda *a, **kw: output_lines.append(a[0] if a else "")):
+        code = list_source_docs_mod.main()
+    return code, output_lines
 
-    # psycopg2 is imported INSIDE main() function body (not module-level),
-    # so we patch it via sys.modules which is where `import psycopg2` resolves.
-    mock_pg = sys.modules["psycopg2"]
-    mock_pg.connect.return_value = conn
+
+def _run_direct(argv, query_return):
+    """Run main() in direct mode."""
+    output_lines = []
+    mock_query = MagicMock(return_value=query_return)
+    mock_conn = MagicMock()
 
     with patch.object(sys, "argv", ["list_source_docs.py"] + argv), \
          patch("list_source_docs.env", return_value="postgresql://fake/db"), \
+         patch("db._use_mcp", return_value=False), \
+         patch("db.get_connection", return_value=mock_conn), \
+         patch("queries.query_list_source_docs", mock_query), \
          patch("builtins.print", side_effect=lambda *a, **kw: output_lines.append(a[0] if a else "")):
         code = list_source_docs_mod.main()
+    return code, output_lines, mock_query
 
-    return code, output_lines, cur
 
-
-# ---------------------------------------------------------------------------
-# TestListSourceDocs
-# ---------------------------------------------------------------------------
-
-class TestListSourceDocs:
-    def test_no_filters_default_limit_50(self):
-        """No flags → no WHERE clause; LIMIT param is 50 (default)."""
-        rows = [(1, "dingtalk", "doc-1", "README.md", None, None, 1)]
-        code, lines, cur = _run_main([], rows)
-
+class TestMcpMode:
+    def test_no_filters(self):
+        code, lines = _run_mcp([], FAKE_DOCS)
         assert code == 0
-        sql = cur.execute.call_args[0][0]
-        params = cur.execute.call_args[0][1]
-        assert "WHERE" not in sql
-        assert "LIMIT" in sql
-        assert 50 in params
+        result = json.loads(lines[0])
+        assert len(result) == 1
 
     def test_source_type_filter(self):
-        """--source-type dingtalk → WHERE source_type = %s with 'dingtalk' in params."""
-        rows = [(2, "dingtalk", "doc-2", "spec.md", None, None, 1)]
-        code, lines, cur = _run_main(["--source-type", "dingtalk"], rows)
-
+        code, lines = _run_mcp(["--source-type", "dingtalk"], FAKE_DOCS)
         assert code == 0
-        sql = cur.execute.call_args[0][0]
-        params = cur.execute.call_args[0][1]
-        assert "source_type = %s" in sql
-        assert "dingtalk" in params
 
-    def test_name_filter_ilike(self):
-        """--name 'report' → WHERE file_name ILIKE '%report%'."""
-        rows = [(3, "google_drive", "doc-3", "weekly-report.md", None, None, 2)]
-        code, lines, cur = _run_main(["--name", "report"], rows)
 
+class TestDirectMode:
+    def test_no_filters_default_limit(self):
+        code, lines, mock_q = _run_direct([], FAKE_DOCS)
         assert code == 0
-        sql = cur.execute.call_args[0][0]
-        params = cur.execute.call_args[0][1]
-        assert "file_name ILIKE %s" in sql
-        assert any("report" in str(p) for p in params)
+        mock_q.assert_called_once()
+        assert mock_q.call_args[1].get("limit") == 50
+
+    def test_source_type_filter(self):
+        code, lines, mock_q = _run_direct(["--source-type", "dingtalk"], FAKE_DOCS)
+        assert code == 0
+        assert mock_q.call_args[1].get("source_type") == "dingtalk"
+
+    def test_name_filter(self):
+        code, lines, mock_q = _run_direct(["--name", "report"], FAKE_DOCS)
+        assert code == 0
+        assert mock_q.call_args[1].get("name") == "report"
 
     def test_custom_limit(self):
-        """--limit 10 → LIMIT param is 10."""
-        rows = []
-        code, lines, cur = _run_main(["--limit", "10"], rows)
-
+        code, lines, mock_q = _run_direct(["--limit", "10"], [])
         assert code == 0
-        params = cur.execute.call_args[0][1]
-        assert 10 in params
-
-    def test_timestamp_formatting(self):
-        """last_edited_at / last_synced_at datetime → converted to str in JSON output."""
-        dt = datetime(2025, 6, 1, 12, 0, 0)
-        rows = [(4, "dingtalk", "doc-4", "plan.md", dt, dt, 1)]
-        code, lines, cur = _run_main([], rows)
-
-        assert code == 0
-        json_str = next(l for l in lines if isinstance(l, str) and l.startswith("["))
-        result = json.loads(json_str)
-        assert len(result) == 1
-        # Both timestamp fields must be strings, not datetime objects
-        assert isinstance(result[0]["last_edited_at"], str)
-        assert isinstance(result[0]["last_synced_at"], str)
+        assert mock_q.call_args[1].get("limit") == 10
 
     def test_combined_filters(self):
-        """--source-type + --name → WHERE with AND; both params present."""
-        rows = [(5, "google_drive", "doc-5", "design-doc.md", None, None, 3)]
-        code, lines, cur = _run_main(["--source-type", "google_drive", "--name", "design"], rows)
-
+        code, lines, mock_q = _run_direct(
+            ["--source-type", "google_drive", "--name", "design"], FAKE_DOCS)
         assert code == 0
-        sql = cur.execute.call_args[0][0]
-        params = cur.execute.call_args[0][1]
-        assert "AND" in sql
-        assert "source_type = %s" in sql
-        assert "file_name ILIKE %s" in sql
-        assert "google_drive" in params
-        assert any("design" in str(p) for p in params)
+        assert mock_q.call_args[1].get("source_type") == "google_drive"
+        assert mock_q.call_args[1].get("name") == "design"
+
+    def test_timestamp_formatting(self):
+        """Timestamps from query_list_source_docs are already strings."""
+        dt_str = "2025-06-01 12:00:00"
+        docs = [{"id": 4, "source_type": "dingtalk", "source_doc_id": "doc-4",
+                 "file_name": "plan.md", "last_edited_at": dt_str,
+                 "last_synced_at": dt_str, "sync_version": 1}]
+        code, lines, _ = _run_direct([], docs)
+        assert code == 0
+        result = json.loads(lines[0])
+        assert isinstance(result[0]["last_edited_at"], str)

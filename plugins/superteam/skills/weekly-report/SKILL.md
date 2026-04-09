@@ -1,5 +1,5 @@
 ---
-name: weekly-report
+name: superteam:weekly-report
 description: Use when a team member asks to generate a weekly report — produces Markdown weekly reports from GitLab commits, MR records, and agent usage data
 ---
 

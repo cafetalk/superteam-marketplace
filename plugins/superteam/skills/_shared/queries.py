@@ -247,6 +247,69 @@ def query_list_source_docs(conn, source_type: str | None = None,
     return rows
 
 
+def query_get_source_doc_content(conn, source_doc_id: int | None = None,
+                                  file_name: str | None = None) -> dict | None:
+    """Read the original source document content from local disk.
+
+    Looks up the local_path in kb_trex_source_docs, then reads the file.
+    Returns {"file_name": str, "source_type": str, "content": str, "local_path": str}
+    or None if not found or file doesn't exist on disk.
+    """
+    import os
+
+    cur = conn.cursor()
+
+    if source_doc_id is not None:
+        cur.execute(
+            "SELECT id, file_name, source_type, source_url, local_path "
+            "FROM kb_trex_source_docs WHERE id = %s",
+            (source_doc_id,),
+        )
+    elif file_name:
+        cur.execute(
+            "SELECT id, file_name, source_type, source_url, local_path "
+            "FROM kb_trex_source_docs WHERE file_name ILIKE %s "
+            "ORDER BY last_synced_at DESC LIMIT 1",
+            (f"%{file_name}%",),
+        )
+    else:
+        cur.close()
+        return None
+
+    row = cur.fetchone()
+    cur.close()
+
+    if not row:
+        return None
+
+    doc_id, fname, source_type, source_url, local_path = row
+
+    result = {
+        "id": doc_id,
+        "file_name": fname,
+        "source_type": source_type or "",
+        "source_url": source_url or "",
+        "local_path": local_path or "",
+        "content": None,
+    }
+
+    # Try reading file from disk
+    if local_path and os.path.isfile(local_path):
+        try:
+            with open(local_path, "r", encoding="utf-8") as f:
+                result["content"] = f.read()
+        except (OSError, UnicodeDecodeError):
+            result["content"] = None
+
+    # Fallback: reassemble from chunks if file not on disk
+    if result["content"] is None:
+        chunk_result = query_get_doc_chunks(conn, source_sync_id=doc_id)
+        if chunk_result:
+            result["content"] = chunk_result["full_text"]
+
+    return result
+
+
 def query_resolve_member(conn, name_string: str) -> dict | None:
     """Read-only member lookup by name. Returns match or None.
 

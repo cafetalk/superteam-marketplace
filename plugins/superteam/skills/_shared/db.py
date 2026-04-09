@@ -199,6 +199,26 @@ def get_doc_chunks(source_sync_id: int | None = None,
         conn.close()
 
 
+def get_source_doc_content(source_doc_id: int | None = None,
+                            file_name: str | None = None) -> dict | None:
+    """Get original source document content — MCP or direct."""
+    if _use_mcp():
+        params = {}
+        if source_doc_id is not None:
+            params["source_doc_id"] = source_doc_id
+        if file_name:
+            params["file_name"] = file_name
+        return _mcp_call("get_source_doc_content", params)
+
+    from queries import query_get_source_doc_content
+    conn = get_connection()
+    try:
+        return query_get_source_doc_content(conn, source_doc_id=source_doc_id,
+                                             file_name=file_name)
+    finally:
+        conn.close()
+
+
 def resolve_member(name_string: str) -> dict | None:
     if _use_mcp():
         return _mcp_call("resolve_member", {"name_string": name_string})

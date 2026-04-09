@@ -1,8 +1,6 @@
 {
   "name": "superteam",
-  "description": "Superteam Hub — team knowledge base query, semantic search, member insights",
-  "version": "1.0.0",
-  "author": {
-    "name": "Superteam"
-  }
+  "description": "Unified knowledge base skills with flow orchestration, verification checkpoints, and multi-source data sync.",
+  "version": "0.4.1",
+  "keywords": ["knowledge-base", "sync", "flow", "dingtalk", "pgvector", "orchestration"]
 }
