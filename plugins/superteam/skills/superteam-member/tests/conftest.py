@@ -1,0 +1,14 @@
+"""Shared fixtures for superteam-member tests."""
+import sys
+from pathlib import Path
+from unittest.mock import MagicMock
+
+SCRIPTS_DIR = Path(__file__).parent.parent / "scripts"
+CORE_DIR = Path(__file__).parent.parent / "core"
+SHARED_DIR = Path(__file__).parent.parent.parent / "_shared"
+sys.path.insert(0, str(SCRIPTS_DIR))
+sys.path.insert(0, str(CORE_DIR))
+sys.path.insert(0, str(SHARED_DIR))
+
+sys.modules.setdefault("psycopg2", MagicMock())
+sys.modules.setdefault("psycopg2.extras", MagicMock())

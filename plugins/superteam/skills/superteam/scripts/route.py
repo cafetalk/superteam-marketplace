@@ -195,8 +195,15 @@ def classify_intents(query: str) -> list[tuple[Route, int]]:
         )
         return [(ROUTES[-1], 0)]
 
-    # Multi-route: include all live matches; if none live, fall back to catch-all
-    out: list[tuple[Route, int]] = [(r, s) for (s, _i, r) in scored if r.status == "live"]
+    # Multi-route: include all live matches with existing scripts.
+    # This prevents dispatching to routes that are configured but not packaged.
+    out: list[tuple[Route, int]] = []
+    for (s, _i, r) in scored:
+        if r.status != "live":
+            continue
+        if not (SKILLS_ROOT / r.script).exists():
+            continue
+        out.append((r, s))
     return out or [(ROUTES[-1], 0)]
 
 
