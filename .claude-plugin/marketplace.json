@@ -2,7 +2,7 @@
   "name": "superteam-marketplace",
   "metadata": {
     "description": "Superteam Hub — team knowledge base query, semantic search, member insights",
-    "version": "0.4.1"
+    "version": "1.1.0"
   },
   "owner": {
     "name": "Superteam"
@@ -12,7 +12,7 @@
       "name": "superteam",
       "source": "./plugins/superteam",
       "description": "Superteam Hub — intelligent query router for team knowledge base with semantic search, member matching, and task insights",
-      "version": "0.4.1",
+      "version": "1.1.0",
       "keywords": ["knowledge-base", "rag", "semantic-search", "team", "pgvector"]
     }
   ]
