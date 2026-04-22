@@ -804,7 +804,7 @@ def summarize_owner_progress(
     pct = (done_n / total * 100.0) if total else 0.0
 
     lines: list[str] = []
-    lines.append(f"本周共推进 **{total}** 项，其中完成 **{done_n}** 项、进行中 **{inprog_n}** 项（完成率 **{pct:.0f}%**）。")
+    lines.append(f"本周共推进 **{total}** 项，其中已完成 **{done_n}** 项、计划中 **{inprog_n}** 项（完成率 **{pct:.0f}%**）。")
 
     # 负责人明细中的父任务进度，也按子任务真实完成情况计算（使用全量 cycle + 状态类型映射）。
     themes = summarize_progress_by_theme(
@@ -831,7 +831,7 @@ def summarize_owner_plan(
     total = len(plan_items)
 
     lines: list[str] = []
-    lines.append(f"下周计划共 **{total}** 项。")
+    lines.append(f"本周计划共 **{total}** 项。")
     themes = summarize_titles_by_theme(plan_items, max_themes=max(1, max_sentences - 2))
     for t in themes[: max(0, max_sentences - 2)]:
         lines.append(t.lstrip("- ").strip())
@@ -1045,10 +1045,31 @@ def _member_names_by_group(group: str) -> set[str]:
 
 
 def _filter_issues_by_member_group(items: list[dict[str, Any]], member_names: set[str]) -> list[dict[str, Any]]:
+    def _is_excluded_issue(it: dict[str, Any]) -> bool:
+        # 全局口径：
+        # 1) 忽略 canceledAt / deletedAt
+        # 2) archivedAt 仅在 statusType=completed 时保留，其他归档状态剔除
+        if it.get("deletedAt") or it.get("canceledAt"):
+            return True
+        status = str(it.get("status") or "").strip().lower()
+        status_type = str(it.get("statusType") or "").strip().lower()
+        if it.get("archivedAt") and status_type != "completed":
+            return True
+        if status_type in ("canceled", "cancelled"):
+            return True
+        if ("取消" in status_type) or ("删除" in status_type):
+            return True
+        if status in ("canceled", "cancelled", "deleted", "removed"):
+            return True
+        if ("取消" in status) or ("删除" in status):
+            return True
+        return False
+
+    visible = [it for it in items if isinstance(it, dict) and not _is_excluded_issue(it)]
     if not member_names:
-        return items
+        return visible
     out: list[dict[str, Any]] = []
-    for it in items:
+    for it in visible:
         assignee = str(it.get("assignee") or it.get("assigneeName") or "").strip()
         if assignee and assignee in member_names:
             out.append(it)
@@ -1082,6 +1103,37 @@ def _pick_cycle_for_week(cycles: list[dict[str, Any]], iso_week: str) -> dict[st
         return None
     hit.sort(key=lambda x: x[0], reverse=True)
     return hit[0][1]
+
+
+def _pick_cycles_for_week(cycles: list[dict[str, Any]], iso_week: str) -> list[dict[str, Any]]:
+    """返回目标自然周覆盖到的全部 Cycle，按 startsAt 倒序。"""
+    start_s, end_s = _week_date_range(iso_week)
+    week_start = datetime.strptime(start_s, "%Y-%m-%d").date()
+    week_end = datetime.strptime(end_s, "%Y-%m-%d").date()
+    hit: list[tuple[date, dict[str, Any]]] = []
+    for c in cycles:
+        if not isinstance(c, dict):
+            continue
+        starts_at = _parse_dt(str(c.get("startsAt") or ""))
+        ends_at = _parse_dt(str(c.get("endsAt") or ""))
+        if not starts_at or not ends_at:
+            continue
+        cycle_start = _to_local_date(starts_at)
+        cycle_end = _to_local_date(ends_at)
+        if cycle_start <= week_end and cycle_end >= week_start:
+            hit.append((cycle_start, c))
+    hit.sort(key=lambda x: x[0], reverse=True)
+    return [c for _, c in hit]
+
+
+def _is_dt_in_iso_week(dt: datetime | None, iso_week: str) -> bool:
+    if not dt:
+        return False
+    start_s, end_s = _week_date_range(iso_week)
+    week_start = datetime.strptime(start_s, "%Y-%m-%d").date()
+    week_end = datetime.strptime(end_s, "%Y-%m-%d").date()
+    d = _to_local_date(dt)
+    return week_start <= d <= week_end
 
 
 def detect_risks(
@@ -1535,6 +1587,9 @@ def render_team_section(
     view: str = "dashboard",
     chart_style: str = "text",
     owner_weekly_url_map: dict[str, str] | None = None,
+    progress_planned_items: list[dict[str, Any]] | None = None,
+    progress_done_items: list[dict[str, Any]] | None = None,
+    weekly_plan_items: list[dict[str, Any]] | None = None,
 ) -> str:
     lines: list[str] = []
     lines.append(f"\n## Team：{team['name']}")
@@ -1652,29 +1707,26 @@ def render_team_section(
         lines.append("\n#### ⚠️ 其他风险提示（自动识别）")
         lines.append("_未发现明显风险信号_")
 
-    done_ip = grouped.done + grouped.in_progress
+    planned_items = progress_planned_items if progress_planned_items is not None else grouped.in_progress
+    done_items = progress_done_items if progress_done_items is not None else grouped.done
+    done_ip = done_items + planned_items
     owner_url_map = owner_weekly_url_map or _member_weekly_report_url_map()
-    lines.append("\n### ✅ 上周进展（完成 + 进行中）")
+    lines.append("\n### ✅ 上周进展（计划中 + 已完成）")
     if done_ip:
-        overview = summarize_progress_by_theme(
-            grouped.done[:120],
-            grouped.in_progress[:120],
-            cissues,
-            status_type_map or {},
-        )
+        overview = summarize_titles_by_theme(done_ip[:120])
         if overview:
             lines.append("\n#### 总览")
             lines.extend(overview)
         lines.append("\n#### 明细（按负责人）")
         merged_by_owner: dict[str, list[tuple[str, dict[str, Any]]]] = defaultdict(list)
-        for it in grouped.done:
-            merged_by_owner[_assignee_name(it) or "未分配"].append(("完成", it))
-        for it in grouped.in_progress:
-            merged_by_owner[_assignee_name(it) or "未分配"].append(("进行中", it))
+        for it in done_items:
+            merged_by_owner[_assignee_name(it) or "未分配"].append(("已完成", it))
+        for it in planned_items:
+            merged_by_owner[_assignee_name(it) or "未分配"].append(("计划中", it))
         for owner, pairs in sorted(merged_by_owner.items(), key=lambda kv: kv[0]):
             lines.append(f"\n- **{owner}**")
-            owner_done = [it for label, it in pairs if label == "完成"]
-            owner_inprog = [it for label, it in pairs if label == "进行中"]
+            owner_done = [it for label, it in pairs if label == "已完成"]
+            owner_inprog = [it for label, it in pairs if label == "计划中"]
             owner_summary = summarize_owner_progress(
                 owner,
                 owner_done,
@@ -1705,7 +1757,7 @@ def render_team_section(
     if discussion_block:
         lines.append(discussion_block)
 
-    plan = grouped.todo + grouped.in_progress
+    plan = weekly_plan_items if weekly_plan_items is not None else (grouped.todo + grouped.in_progress)
     lines.append("\n### 📋 本周计划")
     if plan:
         overview = summarize_titles_by_theme(plan[:120])
@@ -2170,6 +2222,7 @@ def main() -> None:
     args = p.parse_args()
 
     iso_week = args.week or _last_iso_week()
+    current_week = _current_iso_week()
     out_path = Path(args.output) if args.output else Path("reports") / "team-weekly" / f"{iso_week}.md"
     dt_url = dingtalk_mcp_url()
     auto_upload_planned = not args.no_publish_dingtalk and bool(dt_url)
@@ -2205,8 +2258,17 @@ def main() -> None:
                 if not team_id:
                     continue
                 cycles = mcp.list_cycles_for_team(client, tool_names, team_id=team_id)
-                cycle = _pick_cycle_for_week(cycles, iso_week)
-                plan_preview.append({"team": {"id": team_id, "name": t.get("name")}, "cycle": cycle})
+                week_cycles = _pick_cycles_for_week(cycles, iso_week)
+                this_week_cycles = _pick_cycles_for_week(cycles, current_week)
+                cycle = week_cycles[0] if week_cycles else (this_week_cycles[0] if this_week_cycles else None)
+                plan_preview.append(
+                    {
+                        "team": {"id": team_id, "name": t.get("name")},
+                        "last_week_cycles": week_cycles,
+                        "this_week_cycles": this_week_cycles,
+                        "cycle": cycle,
+                    }
+                )
 
             if args.dry_run:
                 print(json.dumps(
@@ -2227,7 +2289,9 @@ def main() -> None:
                 if not team_id:
                     continue
                 cycles = mcp.list_cycles_for_team(client, tool_names, team_id=team_id)
-                cycle = _pick_cycle_for_week(cycles, iso_week)
+                last_week_cycles = _pick_cycles_for_week(cycles, iso_week)
+                this_week_cycles = _pick_cycles_for_week(cycles, current_week)
+                cycle = last_week_cycles[0] if last_week_cycles else (this_week_cycles[0] if this_week_cycles else None)
                 statuses = mcp.list_issue_statuses(client, tool_names, team_id=team_id)
                 status_type_map = {s.get("name", ""): s.get("type", "") for s in statuses if isinstance(s, dict)}
                 team_all_issues = mcp.list_issues_for_team(client, tool_names, team_id=team_id)
@@ -2255,17 +2319,68 @@ def main() -> None:
                     )
                     continue
 
-                cycle_id = cycle.get("id") or cycle.get("cycleId") or ""
                 # 必须用 cycle 条件查询：全量 list_issues(team) 返回的 issue 往往无 cycle 字段，本地 filter 会得到空列表
-                issues = mcp.list_issues_in_cycle(client, tool_names, team_id=team_id, cycle_id=cycle_id)
-                issues = _filter_issues_by_member_group(issues, member_names)
-                grouped = group_issues(issues, status_type_map=status_type_map)
+                week_issues: list[dict[str, Any]] = []
+                seen_keys: set[str] = set()
+                for cyc in last_week_cycles:
+                    cycle_id = cyc.get("id") or cyc.get("cycleId") or ""
+                    if not cycle_id:
+                        continue
+                    batch = mcp.list_issues_in_cycle(client, tool_names, team_id=team_id, cycle_id=cycle_id)
+                    for it in batch:
+                        k = _issue_key(it)
+                        if k in seen_keys:
+                            continue
+                        seen_keys.add(k)
+                        week_issues.append(it)
+                week_issues = _filter_issues_by_member_group(week_issues, member_names)
+                grouped = group_issues(week_issues, status_type_map=status_type_map)
+
+                this_week_issues: list[dict[str, Any]] = []
+                seen_plan_keys: set[str] = set()
+                for cyc in this_week_cycles:
+                    cycle_id = cyc.get("id") or cyc.get("cycleId") or ""
+                    if not cycle_id:
+                        continue
+                    batch = mcp.list_issues_in_cycle(client, tool_names, team_id=team_id, cycle_id=cycle_id)
+                    for it in batch:
+                        k = _issue_key(it)
+                        if k in seen_plan_keys:
+                            continue
+                        seen_plan_keys.add(k)
+                        this_week_issues.append(it)
+                this_week_issues = _filter_issues_by_member_group(this_week_issues, member_names)
+
+                def _status_type(it: dict[str, Any]) -> str:
+                    sname = (it.get("status") or "").strip()
+                    return (status_type_map.get(sname) or "").lower()
+
+                progress_done_items = [
+                    it
+                    for it in week_issues
+                    if _status_type(it) == "completed"
+                    and (
+                        _is_dt_in_iso_week(_parse_dt(it.get("completedAt")), iso_week)
+                        or _is_dt_in_iso_week(_parse_dt(it.get("updatedAt")), iso_week)
+                    )
+                ]
+                progress_planned_items = [
+                    it
+                    for it in week_issues
+                    if _status_type(it) == "unstarted"
+                    and _is_dt_in_iso_week(_parse_dt(it.get("updatedAt")), iso_week)
+                ]
+                weekly_plan_items = [
+                    it for it in this_week_issues if _status_type(it) in ("started", "unstarted")
+                ]
                 disc = fetch_discussion_hints_from_comments(
                     mcp, client, tool_names, grouped.in_progress,
                 )
                 if personal_report_lookup_folder_id:
                     owner_names = list({
-                        _assignee_name(it) for it in (grouped.done + grouped.in_progress) if _assignee_name(it)
+                        _assignee_name(it)
+                        for it in (progress_done_items + progress_planned_items + weekly_plan_items)
+                        if _assignee_name(it)
                     })
                     need_lookup = [n for n in owner_names if n not in owner_weekly_url_map]
                     if need_lookup:
@@ -2283,7 +2398,7 @@ def main() -> None:
                         cycle,
                         grouped,
                         now=now,
-                        cycle_issues=issues,
+                        cycle_issues=week_issues,
                         discussion_block=disc,
                         uncycled_total=uncycled_total,
                         uncycled_skipped_unknown=uncycled_skipped,
@@ -2292,6 +2407,9 @@ def main() -> None:
                         view=args.view,
                         chart_style=chart_style,
                         owner_weekly_url_map=owner_weekly_url_map,
+                        progress_planned_items=progress_planned_items,
+                        progress_done_items=progress_done_items,
+                        weekly_plan_items=weekly_plan_items,
                     )
                 )
     except FileNotFoundError:

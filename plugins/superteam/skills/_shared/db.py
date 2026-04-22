@@ -93,6 +93,7 @@ def _mcp_ensure_session():
     _mcp_request("initialize", {
         "protocolVersion": "2025-03-26",
         "capabilities": {},
+        # MCP schema expects clientInfo.name + clientInfo.version (not arbitrary keys).
         "clientInfo": {"name": "superteam", "version": "1.0.0"},
     })
 
@@ -157,7 +158,7 @@ def search_docs(query: str, creator_id: int | None = None,
 
 def list_members(name_query: str | None = None) -> list[dict]:
     if _use_mcp():
-        params = {}
+        params: dict = {}
         if name_query:
             params["name_query"] = name_query
         return _mcp_call("list_members", params)

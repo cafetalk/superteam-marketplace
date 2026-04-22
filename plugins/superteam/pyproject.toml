@@ -1,0 +1,30 @@
+[project]
+name = "superteam"
+version = "1.1.0"
+description = "Superteam skills runtime environment"
+requires-python = ">=3.9"
+dependencies = [
+  "psycopg2-binary>=2.9.0",
+  "httpx>=0.27.0",
+  "dashscope>=1.20.0",
+  "langchain-text-splitters>=0.3.0",
+  "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+google-drive = [
+  "google-auth>=2.0.0",
+  "google-api-python-client>=2.0.0",
+]
+notion = [
+  "notion-client>=2.2.1",
+]
+extract = [
+  "unstructured[pdf,docx,xlsx,pptx]>=0.16.0",
+]
+dev = [
+  "pytest>=7.0.0",
+]
+
+[tool.uv]
+package = false
