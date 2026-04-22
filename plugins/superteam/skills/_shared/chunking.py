@@ -14,7 +14,7 @@ except ImportError:
 
 DOC_TYPES = frozenset({
     "prd", "tech-design", "reference", "guide", "explanation",
-    "decision", "meeting-notes", "weekly-report", "plan",
+    "decision", "meeting-notes", "superteam-report", "plan",
     "changelog", "other",
 })
 
@@ -44,7 +44,7 @@ def classify_by_regex(title: str, content_preview: str) -> str:
     if re.search(r"(会议纪要|meeting.?note|standup|sprint.?planning)", t):
         return "meeting-notes"
     if re.search(r"(周报|月报|w\d+|weekly|week\s?\d|复盘)", t):
-        return "weekly-report"
+        return "superteam-report"
     if re.search(r"(okr|q\d+|季度计划|roadmap|排期|里程碑|排行榜|积分规则)", t):
         return "plan"
     if re.search(r"(release.?note|changelog|变更记录|发版|hotfix)", t):
@@ -66,7 +66,7 @@ def classify_by_regex(title: str, content_preview: str) -> str:
     if re.search(r"(### 日期[：:]|参会人员[：:]|议题[：:]|结论[：:]|TODO[：:])", p):
         return "meeting-notes"
     if re.search(r"(【本周完成】|【下周计划】|【阻塞问题】|✅ 做得好的|❌ 需改进|💡 改进建议|行动项)", p):
-        return "weekly-report"
+        return "superteam-report"
     if re.search(r"(key.?result|里程碑|积分规则)", p):
         return "plan"
     if re.search(r"(## v\d|### bug.?fix|### feature|breaking.?change)", p):
@@ -189,7 +189,7 @@ def classify_by_llm(title: str, content_preview: str, model: str = "qwen-plus") 
 - explanation: 概念解释/知识沉淀。包括行业分析、竞品分析、最佳实践、原理讲解、叙事文档(Narrative)、战略分析(Strategic Bible)、商业方案、Investor Update、Pitch Deck等
 - decision: 决策记录。包括方案对比、技术选型、ADR、评审结论等
 - meeting-notes: 会议纪要
-- weekly-report: 周报/月报/复盘
+- superteam-report: 周报/月报/复盘
 - plan: 规划/路线图。包括OKR、迭代排期、里程碑、积分规则、Roadmap等
 - changelog: 变更记录/发版说明
 - other: 仅用于代码文件(.py/.sql/.html/.csv/.yaml)、原始数据dump、无法识别的内容
@@ -264,7 +264,7 @@ def chunk_with_llm(text: str, title: str = "", model: str = "qwen-plus") -> tupl
 - explanation: 概念解释/知识沉淀
 - decision: 决策记录/方案对比
 - meeting-notes: 会议纪要
-- weekly-report: 周报/月报/复盘
+- superteam-report: 周报/月报/复盘
 - plan: 规划/OKR/路线图
 - changelog: 变更记录/发版说明
 - other: 其他

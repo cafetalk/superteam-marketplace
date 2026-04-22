@@ -293,15 +293,25 @@ def query_get_source_doc_content(conn, source_doc_id: int | None = None,
         "content": None,
     }
 
-    # Try reading file from disk
-    if local_path and os.path.isfile(local_path):
+    # Primary: read file from disk (shared mount between MCP server and sync server)
+    # local_path in DB may use sync server's path; translate via SUPERTEAM_SOURCE_DIR
+    read_path = local_path
+    source_dir = os.environ.get("SUPERTEAM_SOURCE_DIR")
+    if local_path and source_dir:
+        # Extract relative part after source_docs/ (e.g. "dingtalk/xxx.md")
+        marker = "/source_docs/"
+        idx = local_path.find(marker)
+        if idx >= 0:
+            read_path = os.path.join(source_dir, local_path[idx + len(marker):])
+
+    if read_path and os.path.isfile(read_path):
         try:
-            with open(local_path, "r", encoding="utf-8") as f:
+            with open(read_path, "r", encoding="utf-8") as f:
                 result["content"] = f.read()
         except (OSError, UnicodeDecodeError):
             result["content"] = None
 
-    # Fallback: reassemble from chunks if file not on disk
+    # Fallback: reassemble from chunks (only if file not found or read failed)
     if result["content"] is None:
         chunk_result = query_get_doc_chunks(conn, source_sync_id=doc_id)
         if chunk_result:

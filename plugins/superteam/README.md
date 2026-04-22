@@ -8,19 +8,19 @@ Superteam is a comprehensive AI-powered framework for knowledge base management 
 
 ```
                           ┌─────────────────────────────┐
-                          │          hub ✅              │
+                          │          superteam ✅              │
                           │  route.py  关键词意图路由     │
                           └─────┬──────────┬────────────┘
                                 │          │
                ┌────────────────┤          ├──────────────────┐
                ▼                ▼          ▼                  ▼
   ┌─────────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-  │ insight-docs ✅ │  │insight-data  │  │weekly-report │  │list_members  │
-  │ RAG 语义搜索    │  │ 🔨 AGE+SQL  │  │ 🔨 周报生成   │  │ ✅ 成员管理   │
-  │                 │  │              │  │              │  │              │
-  │ search_docs.py  │  │query_tasks.py│  │gen_report.py │  │ resolve      │
-  │ list_source_    │  │ --member     │  │ --member     │  │ review       │
-  │   docs.py       │  │ --task       │  │ --week       │  │ alias        │
+  │ superteam-knowledgebase ✅ │  │superteam-data  │  │superteam-report │  │list_members  │
+  │ RAG 语义搜索    │  │ MCP 业务数据  │  │ 🔨 周报生成   │  │ ✅ 成员管理   │
+  │                 │  │ query_agentic │  │              │  │              │
+  │ search_docs.py  │  │ _data.py      │  │gen_report.py │  │ resolve      │
+  │ list_source_    │  │               │  │ --member     │  │ review       │
+  │   docs.py       │  │               │  │ --week       │  │ alias        │
   └────────┬────────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘
            │                  │                  │                  │
            │                  │                  │                  │
@@ -28,7 +28,7 @@ Superteam is a comprehensive AI-powered framework for knowledge base management 
            │         ⚙️ 数据生产层（定时 / 手动）     │                  │
            │                                     │                  │
            │  ┌──────────────────────────────────────────────────┐  │
-           │  │  capture-docs ✅  run_capture.py                 │  │
+           │  │  superteam-sync ✅  run_capture.py                 │  │
            │  │  --step N · --dry-run · --only · hard-gate       │  │
            │  │                                                  │  │
            │  │  ┌──────────┐ ┌──────────────┐ ┌──────────┐     │  │
@@ -92,7 +92,7 @@ Superteam is a comprehensive AI-powered framework for knowledge base management 
                                        │                            │
   ┌────────────────────────────────────┴────────────────────────────┴────────┐
   │                                                                          │
-  │  知识库 (store-kb-pgsql ✅)              成员系统 (v3 新增)               │
+  │  知识库 (superteam-store-kb-pgsql ✅)              成员系统 (v3 新增)               │
   │  ┌──────────────────────────────┐       ┌────────────────────────────┐  │
   │  │ kb_trex_source_docs          │       │ kb_trex_team_members       │  │
   │  │   source_type, file_name,    │  ┌───▶│   user_id, real_name,     │  │
@@ -107,7 +107,7 @@ Superteam is a comprehensive AI-powered framework for knowledge base management 
   │  │ kb_trex_sync_failures        │       │ kb_trex_member_review_     │  │
   │  └──────────────────────────────┘       │   queue v3                 │  │
   │                                          │   new_member / merge       │  │
-  │  任务管理 (sync-task-data 🔨)            │   pending → approved       │  │
+  │  任务管理 (superteam-sync-task-data 🔨)            │   pending → approved       │  │
   │  ┌──────────────────────────────┐       └────────────────────────────┘  │
   │  │ tm_iterations, tm_tasks,     │                                       │
   │  │ tm_task_members, tm_bugs     │       运维工具                         │
@@ -132,16 +132,16 @@ Superteam is a comprehensive AI-powered framework for knowledge base management 
                    env > ~/.xxx/config       钉钉/GDrive/Notion
   super_member.py  v3 作者智能识别               ↓ sync-*-kb
                    4 级 fallback + LLM           ↓ SuperMember.resolve(author)
-  pipeline.py      Per-doc inline pipeline       ↓ process-doc-extract (二进制→文本)
+  pipeline.py      Per-doc inline pipeline       ↓ superteam-process-doc-extract (二进制→文本)
                    sync→extract→chunk→embed      ↓ chunk_smart (LangChain)
   chunking.py      v3 LangChain splitters        ↓ embed (1536d)
-                   + classify (11类 doc_type)     ↓ store-kb-pgsql
-  embedding.py     1536d 向量化                   ↓ insight-docs (RAG)
+                   + classify (11类 doc_type)     ↓ superteam-store-kb-pgsql
+  embedding.py     1536d 向量化                   ↓ superteam-knowledgebase (RAG)
                    DashScope / OpenAI
   db.py            PostgreSQL 连接管理       任务流 (🔨):
-                                              钉钉多维表格 → sync-task-data
-                                              → tm_* → AGE → insight-data
-                                              → 物化视图 → weekly-report
+                                              钉钉多维表格 → superteam-sync-task-data
+                                              → tm_* → AGE → 分析 / 周报等
+                                              → 物化视图 → superteam-report
 
   状态: ✅ 已上线 | 🔨 骨架实现 | v3 = 本版新增/增强
 ```
@@ -162,21 +162,21 @@ Superteam is a comprehensive AI-powered framework for knowledge base management 
 
 | Skill | Category | Description | Key Scripts | Status |
 |-------|----------|-------------|-------------|--------|
-| **hub** | 路由 | 意图识别 + 分发 | `route.py` | ✅ |
-| **insight-docs** | 洞察 | RAG 语义搜索 | `search_docs.py` `list_source_docs.py` | ✅ |
-| **insight-data** | 洞察 | 任务查询 (AGE + SQL) | `query_tasks.py` | 🔨 |
-| **weekly-report** | 生成 | 周报生成 | `generate_report.py` | 🔨 |
-| **capture-docs** | 编排 | 同步编排器 | `run_capture.py` | ✅ |
-| **sync-dingtalk-kb** | 同步 | 钉钉 → KB (含作者识别) | `sync_dingtalk_to_kb.py` | ✅ |
-| **sync-google-drive-kb** | 同步 | GDrive → KB (含二进制提取) | `sync_google_drive_to_kb.py` `drive_client.py` | ✅ |
-| **sync-notion-kb** | 同步 | Notion → KB | `sync_notion_to_kb.py` `notion_api.py` | ✅ |
-| **sync-task-data** | 同步 | 钉钉多维表 → PG + AGE | `sync_task_data.py` | 🔨 |
-| **process-doc-chunk** | 处理 | v3: LangChain 智能分块 + 分类 (11类) | `chunk_doc.py` | ✅ |
-| **process-doc-extract** | 处理 | v3: Unstructured 二进制提取 | `content_extractor.py` | ✅ |
-| **store-kb-pgsql** | 存储 | pgvector 向量存储 + 回填工具 | `ingest_doc.py` `backfill_authors.py` | ✅ |
-| **source-dingtalk-document** | 数据源 | 钉钉文档 API | `read_node.py` | ✅ |
-| **source-dingtalk-spreadsheet** | 数据源 | 钉钉表格 API | `read_spreadsheet.py` | ✅ |
-| **source-dingtalk-table** | 数据源 | 钉钉多维表格 Notable API | `read_notable.py` | 🔨 |
+| **superteam** | 路由 | 意图识别 + 分发 | `route.py` | ✅ |
+| **superteam-knowledgebase** | 洞察 | RAG 语义搜索 | `search_docs.py` `list_source_docs.py` | ✅ |
+| **superteam-data** | 洞察 | 业务侧数据（活动/投放、badge、provider 等；非 Linear/研发任务） | `query_agentic_data.py` | ✅ |
+| **superteam-report** | 生成 | 周报生成 | `generate_report.py` | 🔨 |
+| **superteam-sync** | 编排 | 同步编排器 | `run_capture.py` | ✅ |
+| **superteam-sync-dingtalk-kb** | 同步 | 钉钉 → KB (含作者识别) | `sync_dingtalk_to_kb.py` | ✅ |
+| **superteam-sync-google-drive-kb** | 同步 | GDrive → KB (含二进制提取) | `sync_google_drive_to_kb.py` `drive_client.py` | ✅ |
+| **superteam-sync-notion-kb** | 同步 | Notion → KB | `sync_notion_to_kb.py` `notion_api.py` | ✅ |
+| **superteam-sync-task-data** | 同步 | 钉钉多维表 → PG + AGE | `sync_task_data.py` | 🔨 |
+| **superteam-process-doc-chunk** | 处理 | v3: LangChain 智能分块 + 分类 (11类) | `chunk_doc.py` | ✅ |
+| **superteam-process-doc-extract** | 处理 | v3: Unstructured 二进制提取 | `content_extractor.py` | ✅ |
+| **superteam-store-kb-pgsql** | 存储 | pgvector 向量存储 + 回填工具 | `ingest_doc.py` `backfill_authors.py` | ✅ |
+| **superteam-source-dingtalk-document** | 数据源 | 钉钉文档 API | `read_node.py` | ✅ |
+| **superteam-source-dingtalk-spreadsheet** | 数据源 | 钉钉表格 API | `read_spreadsheet.py` | ✅ |
+| **superteam-source-dingtalk-table** | 数据源 | 钉钉多维表格 Notable API | `read_notable.py` | 🔨 |
 
 ## Project Structure
 
@@ -190,10 +190,10 @@ superteam/
 │   ├── 003_task_management.sql
 │   └── 004_smart_author.sql              ← v3: aliases + review queue
 ├── docs/
-│   ├── prompts/                           agent 执行 prompt
-│   └── superpowers/
-│       ├── plans/                         实施计划
-│       └── specs/                         设计文档 (5份)
+│   ├── README.md                          文档索引
+│   ├── guides/                            说明文档（安装、场景、介绍等）
+│   ├── architecture/                    架构设计（总览图、superpowers 计划与规格）
+│   └── skills-design/                   单技能/能力设计
 ├── skills/
 │   ├── _shared/                           共享模块
 │   │   ├── config.py                        统一配置
@@ -203,31 +203,32 @@ superteam/
 │   │   ├── pipeline.py                      Per-doc inline pipeline
 │   │   ├── super_member.py                  v3: 作者智能识别 (4级 fallback)
 │   │   └── tests/                           6 个测试模块 (55+ tests)
-│   ├── hub/                               意图路由
-│   ├── insight-docs/                      RAG 搜索 + 成员管理 CLI
+│   ├── superteam/                               意图路由
+│   ├── superteam-knowledgebase/                      RAG 搜索 + 成员管理 CLI
 │   │   └── scripts/
 │   │       ├── search_docs.py
 │   │       ├── list_members.py              v3: resolve/review/alias 子命令
 │   │       └── list_source_docs.py
-│   ├── insight-data/                      任务查询 (AGE + SQL) 🔨
-│   ├── weekly-report/                     周报生成 🔨
-│   ├── capture-docs/                      同步编排
-│   ├── sync-dingtalk-kb/                  钉钉同步 (含 SuperMember)
-│   ├── sync-google-drive-kb/              GDrive 同步 (含 owners 提取)
-│   ├── sync-notion-kb/                    Notion 同步 (含 created_by)
-│   ├── sync-task-data/                    任务数据同步 🔨
-│   ├── process-doc-chunk/                 智能分块 + 分类
-│   ├── process-doc-extract/               二进制文档提取 (Unstructured)
-│   ├── store-kb-pgsql/                    向量存储 + 运维工具
+│   ├── superteam-data/                      业务数据洞察 (MCP 桥接) ✅
+│   │   └── scripts/query_agentic_data.py
+│   ├── superteam-report/                     周报生成 🔨
+│   ├── superteam-sync/                      同步编排
+│   ├── superteam-sync-dingtalk-kb/                  钉钉同步 (含 SuperMember)
+│   ├── superteam-sync-google-drive-kb/              GDrive 同步 (含 owners 提取)
+│   ├── superteam-sync-notion-kb/                    Notion 同步 (含 created_by)
+│   ├── superteam-sync-task-data/                    任务数据同步 🔨
+│   ├── superteam-process-doc-chunk/                 智能分块 + 分类
+│   ├── superteam-process-doc-extract/               二进制文档提取 (Unstructured)
+│   ├── superteam-store-kb-pgsql/                    向量存储 + 运维工具
 │   │   └── scripts/
 │   │       ├── ingest_doc.py
 │   │       ├── search_docs.py
 │   │       ├── backfill_authors.py          v3: 作者回填 (元数据)
 │   │       ├── populate_aliases.py
 │   │       └── verify.py
-│   ├── source-dingtalk-document/          钉钉文档 API
-│   ├── source-dingtalk-spreadsheet/       钉钉表格 API
-│   └── source-dingtalk-table/             钉钉多维表格 API 🔨
+│   ├── superteam-source-dingtalk-document/          钉钉文档 API
+│   ├── superteam-source-dingtalk-spreadsheet/       钉钉表格 API
+│   └── superteam-source-dingtalk-table/             钉钉多维表格 API 🔨
 ├── MIGRATION.md
 └── README.md
 ```
@@ -236,11 +237,11 @@ superteam/
 
 | Feature | What Changed | Design Doc |
 |---------|-------------|------------|
-| **Smart Author Resolve** | 4-step fallback: exact → alias → dedup → LLM (qwen-plus). All 3 sync scripts extract author, `SuperMember.resolve()` always returns user_id. Post-sync review queue. `backfill_authors.py` for existing data. | `specs/2026-03-20-smart-author-resolve-design.md` |
-| **Smart Chunking** | `chunk_text()` → `chunk_smart()` (LangChain). Markdown-aware splitting, sentence boundary respect, auto-detect format. | `specs/2026-03-19-smart-chunking-design.md` |
-| **Binary Format Extraction** | PDF/DOCX/XLSX/PPTX via Unstructured. Coverage 57% → 90%+. | `specs/2026-03-17-file-format-extraction-design.md` |
-| **Google Drive Sync** | Service Account auth, incremental sync, batch + resume, binary format support. | `specs/2026-03-17-google-drive-sync-design.md` |
-| **Test Coverage** | 200+ unit tests across 15 skills, pure mock, zero external deps. | `specs/2026-03-19-test-completion-design.md` |
+| **Smart Author Resolve** | 4-step fallback: exact → alias → dedup → LLM (qwen-plus). All 3 sync scripts extract author, `SuperMember.resolve()` always returns user_id. Post-sync review queue. `backfill_authors.py` for existing data. | `docs/architecture/superpowers/specs/2026-03-20-smart-author-resolve-design.md` |
+| **Smart Chunking** | `chunk_text()` → `chunk_smart()` (LangChain). Markdown-aware splitting, sentence boundary respect, auto-detect format. | `docs/architecture/superpowers/specs/2026-03-19-smart-chunking-design.md` |
+| **Binary Format Extraction** | PDF/DOCX/XLSX/PPTX via Unstructured. Coverage 57% → 90%+. | `docs/architecture/superpowers/specs/2026-03-17-file-format-extraction-design.md` |
+| **Google Drive Sync** | Service Account auth, incremental sync, batch + resume, binary format support. | `docs/architecture/superpowers/specs/2026-03-17-google-drive-sync-design.md` |
+| **Test Coverage** | 200+ unit tests across 15 skills, pure mock, zero external deps. | `docs/architecture/superpowers/specs/2026-03-19-test-completion-design.md` |
 
 ### SQL Migrations
 

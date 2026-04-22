@@ -1,6 +1,6 @@
 """Shared OSS backup utility — sync local source_docs to Aliyun OSS.
 
-Used by sync-* scripts (post-download hook) and backup-to-oss skill (standalone).
+Used by sync-* scripts (post-download hook) and superteam-backup-to-oss skill (standalone).
 Gracefully no-ops when OSS is not configured, so sync scripts work without OSS.
 """
 from __future__ import annotations

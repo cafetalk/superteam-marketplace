@@ -93,7 +93,7 @@ def _mcp_ensure_session():
     _mcp_request("initialize", {
         "protocolVersion": "2025-03-26",
         "capabilities": {},
-        "clientInfo": {"name": "superteam-hub", "version": "0.3.0"},
+        "clientInfo": {"name": "superteam", "version": "1.0.0"},
     })
 
 
@@ -120,7 +120,13 @@ def _mcp_call(tool_name: str, params: dict):
     # Fallback: parse from text content
     content = result.get("content", [])
     if content and content[0].get("type") == "text":
-        return json.loads(content[0]["text"])
+        text = content[0]["text"]
+        if not text or not text.strip():
+            return None
+        try:
+            return json.loads(text)
+        except (json.JSONDecodeError, ValueError):
+            raise McpError("parse_error", f"MCP returned non-JSON text: {text[:200]}")
     return result
 
 

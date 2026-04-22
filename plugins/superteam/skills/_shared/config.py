@@ -1,7 +1,9 @@
 """Unified config loading: os.environ > ~/.superteam/config."""
 from __future__ import annotations
+import json
 import os
 from pathlib import Path
+from typing import Any
 
 CONFIG_DIRS = [".superteam"]
 _CONFIG_CACHE: dict[str, str] | None = None
@@ -76,6 +78,57 @@ def env(key: str, default: str | None = None) -> str | None:
     if v:
         return v
     return _load_config().get(key, default)
+
+
+def _extract_mcp_http_urls(obj: Any, path: str = "") -> list[tuple[str, str]]:
+    """Walk Cursor-style mcp.json (possibly nested ``mcpServers``) and collect (path, url)."""
+    out: list[tuple[str, str]] = []
+    if not isinstance(obj, dict):
+        return out
+    url = obj.get("url")
+    if isinstance(url, str) and url.startswith("http"):
+        out.append((path or "default", url))
+    ms = obj.get("mcpServers")
+    if isinstance(ms, dict):
+        for k, v in ms.items():
+            p = f"{path}/{k}" if path else str(k)
+            if isinstance(v, dict):
+                out.extend(_extract_mcp_http_urls(v, p))
+        return out
+    for k, v in obj.items():
+        if k in ("headers", "env", "command", "args", "type"):
+            continue
+        if isinstance(v, dict):
+            p = f"{path}/{k}" if path else str(k)
+            out.extend(_extract_mcp_http_urls(v, p))
+    return out
+
+
+def dingtalk_mcp_url() -> str | None:
+    """钉钉文档 MCP 的 HTTP endpoint。
+
+    解析顺序：
+
+    1. 环境变量 ``DINGTALK_MCP_URL``
+    2. ``~/.superteam/config`` 等同名键
+    3. ``~/.cursor/mcp.json`` 中带 ``dingtalk`` 的 URL，或路径名含「钉钉」的条目（兼容错误嵌套的 ``mcpServers``）
+    """
+    direct = env("DINGTALK_MCP_URL")
+    if direct:
+        return direct
+    path = Path.home() / ".cursor" / "mcp.json"
+    if not path.exists():
+        return None
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+        return None
+    if not isinstance(raw, dict):
+        return None
+    for name, u in _extract_mcp_http_urls(raw, ""):
+        if "dingtalk" in u.lower() or "钉钉" in str(name):
+            return u
+    return None
 
 
 def env_list(key: str) -> list[str]:

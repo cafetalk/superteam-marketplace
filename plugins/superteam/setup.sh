@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ===========================================================================
-# superteam-hub setup — 一键安装脚本（Plugin 模式）
+# superteam setup — 一键安装脚本（Plugin 模式）
 # ===========================================================================
 
 CYAN='\033[0;36m'
@@ -11,7 +11,7 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 echo -e "${CYAN}╔══════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║     superteam-hub 安装向导           ║${NC}"
+echo -e "${CYAN}║       superteam 安装向导             ║${NC}"
 echo -e "${CYAN}╚══════════════════════════════════════╝${NC}"
 echo ""
 
@@ -25,12 +25,12 @@ echo -e "${CYAN}[1/5] 检测 Python 环境...${NC}"
 PYTHON=""
 for cmd in python3 python; do
     if command -v "$cmd" &>/dev/null; then
-        version=$("$cmd" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
+        VERSION=$("$cmd" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
         major=$("$cmd" -c "import sys; print(sys.version_info.major)" 2>/dev/null)
         minor=$("$cmd" -c "import sys; print(sys.version_info.minor)" 2>/dev/null)
         if [ "$major" -ge 3 ] && [ "$minor" -ge 9 ]; then
             PYTHON="$cmd"
-            echo -e "  ${GREEN}✓${NC} 找到 $cmd ($version)"
+            echo -e "  ${GREEN}✓${NC} 找到 $cmd ($VERSION)"
             break
         fi
     fi
@@ -41,23 +41,18 @@ if [ -z "$PYTHON" ]; then
     exit 1
 fi
 
-# ------------------------------------------------------------------
-# Step 2: 创建虚拟环境并安装依赖
-# ------------------------------------------------------------------
-echo -e "${CYAN}[2/5] 创建虚拟环境并安装依赖...${NC}"
-
-VENV_DIR="$SCRIPT_DIR/.venv"
-
-if [ ! -d "$VENV_DIR" ]; then
-    "$PYTHON" -m venv "$VENV_DIR"
-    echo -e "  ${GREEN}✓${NC} 虚拟环境创建于 $VENV_DIR"
-else
-    echo -e "  ${GREEN}✓${NC} 虚拟环境已存在"
+if ! command -v uv &>/dev/null; then
+    echo -e "  ${RED}✗ 未找到 uv，请先安装 uv（https://docs.astral.sh/uv/）${NC}"
+    exit 1
 fi
+echo -e "  ${GREEN}✓${NC} 找到 uv ($(uv --version | awk '{print $2}'))"
 
-"$VENV_DIR/bin/pip" install --quiet --upgrade pip
-"$VENV_DIR/bin/pip" install --quiet httpx
-echo -e "  ${GREEN}✓${NC} httpx 已安装"
+# ------------------------------------------------------------------
+# Step 2: 初始化 uv 环境并安装依赖
+# ------------------------------------------------------------------
+echo -e "${CYAN}[2/5] 初始化 uv 环境并安装依赖...${NC}"
+uv sync --python "$PYTHON" --quiet
+echo -e "  ${GREEN}✓${NC} uv 依赖已安装（默认组）"
 
 # ------------------------------------------------------------------
 # Step 3: 配置 MCP 连接
@@ -93,15 +88,35 @@ CONF
     fi
 fi
 
+# 配置 superteam-git 默认 workspace（用于 /superteam-git 直接查询）
+echo ""
+if [ -f "$CONFIG_FILE" ] && grep -q "^SUPERTEAM_GIT_WORKSPACE=" "$CONFIG_FILE" 2>/dev/null; then
+    EXISTING_WS=$(grep "^SUPERTEAM_GIT_WORKSPACE=" "$CONFIG_FILE" | cut -d'=' -f2-)
+    echo -e "  ${GREEN}✓${NC} 已有 Git workspace 配置: $EXISTING_WS"
+else
+    DEFAULT_GIT_WS="$HOME/code"
+    read -p "  superteam-git 默认 workspace（回车使用 ${DEFAULT_GIT_WS}；多个目录用 : 分隔）: " GIT_WS_INPUT
+    GIT_WS="${GIT_WS_INPUT:-$DEFAULT_GIT_WS}"
+    mkdir -p "$CONFIG_DIR"
+    if [ -f "$CONFIG_FILE" ]; then
+        echo "SUPERTEAM_GIT_WORKSPACE=$GIT_WS" >> "$CONFIG_FILE"
+    else
+        cat > "$CONFIG_FILE" <<CONF
+SUPERTEAM_GIT_WORKSPACE=$GIT_WS
+CONF
+    fi
+    echo -e "  ${GREEN}✓${NC} 已保存 SUPERTEAM_GIT_WORKSPACE=$GIT_WS（多目录示例: $HOME/proj:$HOME/work）"
+fi
+
 # 测试连接
 if [ -n "$MCP_URL" ] && [ -n "$MCP_TOKEN" ]; then
-    HEALTH_CHECK=$("$VENV_DIR/bin/python" -c "
+    HEALTH_CHECK=$(uv run --python "$PYTHON" python -c "
 import httpx
 try:
     base = '${MCP_URL}'.rsplit('/mcp', 1)[0]
     r = httpx.get(f'{base}/health', timeout=10)
     if r.status_code == 200:
-        print(f'OK:{r.json().get(\"version\", \"unknown\")}')
+        print(f'OK:{r.json().get(\"superteam-version\", \"unknown\")}')
     else:
         print(f'FAIL:HTTP {r.status_code}')
 except Exception as e:
@@ -109,8 +124,8 @@ except Exception as e:
 " 2>&1)
 
     if [[ "$HEALTH_CHECK" == OK:* ]]; then
-        version="${HEALTH_CHECK#OK:}"
-        echo -e "  ${GREEN}✓${NC} MCP 服务连接成功！版本: $version"
+        VERSION="${HEALTH_CHECK#OK:}"
+        echo -e "  ${GREEN}✓${NC} MCP 服务连接成功！版本: $VERSION"
     else
         error="${HEALTH_CHECK#FAIL:}"
         echo -e "  ${RED}⚠ MCP 连接失败: $error${NC}"
@@ -211,7 +226,7 @@ for tool in "${TOOLS[@]}"; do
             # 更新 AGENTS.md 中的 superteam 说明
             AGENTS_MD="$HOME/.nanobot/workspace/AGENTS.md"
             if [ -f "$AGENTS_MD" ]; then
-                "$VENV_DIR/bin/python" -c "
+                "$PYTHON" -c "
 import re, pathlib
 p = pathlib.Path('$AGENTS_MD')
 text = p.read_text()
@@ -219,22 +234,45 @@ new_section = '''## superteam Skills（知识库插件）
 
 superteam skills 安装在 \`skills/superteam/\` 目录下。每个 sub-skill 有自己的 \`SKILL.md\` 和 \`scripts/\` 目录。
 
-**脚本执行路径格式：** \`python3 skills/superteam/<skill-name>/scripts/<script>.py\`
+**脚本执行路径格式：** \`uv run --python python3 skills/superteam/<skill-name>/scripts/<script>.py\`
 
 | Skill 名称 | 用途 |
 |------------|------|
-| \`superteam:hub\` | 智能查询路由（意图识别 → 分发） |
-| \`superteam:insight-docs\` | 语义搜索、成员查询、文档列表 |
-| \`superteam:insight-data\` | 任务/迭代数据查询 |
-| \`superteam:weekly-report\` | 周报生成 |
+| \`superteam\` | 智能查询路由（意图识别 → 分发） |
+| \`superteam-knowledgebase\` | 语义搜索、文档列表、完整文档获取 |
+| \`superteam-member\` | 成员查询、成员解析、成员资料管理（管理员） |
+| \`superteam-data\` | 业务数据查询（MCP agentic_data；非 Linear/研发任务） |
+| \`superteam-report\` | 周报生成 |
+| \`superteam-version\` | 版本号、已装 skill、配置状态 |
 
 ### 快速使用
 
 \\\`\\\`\\\`bash
-python3 skills/superteam/hub/scripts/route.py --query \"搜索内容\" --execute
-python3 skills/superteam/insight-docs/scripts/search_docs.py \"关键词\"
-python3 skills/superteam/insight-docs/scripts/list_members.py
+# 通用路由（推荐入口）
+uv run --python python3 skills/superteam/superteam/scripts/route.py --query \"搜索内容\" --execute
+
+# 语义搜索（返回相关片段）
+uv run --python python3 skills/superteam/superteam-knowledgebase/scripts/search_docs.py \"关键词\"
+
+# 获取单篇文档完整内容（按文档名）
+uv run --python python3 skills/superteam/superteam-knowledgebase/scripts/get_doc.py --name \"文档名\"
+
+# 深度搜索（先搜索再获取完整原文）
+uv run --python python3 skills/superteam/superteam-knowledgebase/scripts/deep_search.py \"搜索词\"
+
+# 成员列表（只读沙箱兼容）
+PYTHONDONTWRITEBYTECODE=1 uv run --python python3 skills/superteam/superteam-member/scripts/list_members.py list
+
+# 版本信息
+uv run --python python3 skills/superteam/superteam-version/scripts/version.py
 \\\`\\\`\\\`
+
+### ⚠️ 重要规则
+
+1. 用户要「完整文档/全文/原文」→ 用 \`get_doc.py\` 或 \`deep_search.py\`，**禁止**用 \`search_docs.py\`（它只返回片段）
+2. 用户问「版本号」→ 用 \`version.py\`，不要查 pip 或系统信息
+3. 所有脚本输出都是结构化数据，agent 负责合成自然语言回答
+4. 详细用法参考各 skill 的 SKILL.md
 
 ### 配置
 
@@ -273,12 +311,13 @@ echo -e "${GREEN}  安装完成！${NC}"
 echo -e "${GREEN}══════════════════════════════════════${NC}"
 echo ""
 echo "已安装 superteam plugin，包含以下 skills："
-echo "  superteam:hub           — 智能查询路由"
-echo "  superteam:insight-docs  — 知识库搜索"
-echo "  superteam:insight-data  — 数据洞察 (coming soon)"
-echo "  superteam:insight-git   — Git 洞察 (coming soon)"
-echo "  superteam:insight-linear — Linear 洞察 (coming soon)"
-echo "  superteam:weekly-report — 周报生成 (coming soon)"
+echo "  superteam           — 智能查询路由"
+echo "  superteam-knowledgebase  — 知识库搜索"
+echo "  superteam-member — 成员查询与资料管理"
+echo "  superteam-data  — 业务数据洞察"
+echo "  superteam-git   — Git 洞察（支持 /superteam-git 自然语言时间范围）"
+echo "  superteam-linear — Linear 洞察 (coming soon)"
+echo "  superteam-report — 周报生成 (coming soon)"
 echo ""
-echo "重启 Claude Code 会话后生效。使用 /superteam:hub 或直接提问即可。"
+echo "重启 Claude Code 会话后生效。使用 /superteam 或直接提问即可。"
 echo ""
