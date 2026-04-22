@@ -40,6 +40,19 @@ class Route:
 
 ROUTES: list[Route] = [
     Route(
+        skill="superteam-git",
+        script="superteam-git/scripts/query_git.py",
+        keywords=[
+            "提交代码", "提交", "commit", "git commit",
+            "推送代码", "推送", "push", "git push",
+            "git status", "git diff", "代码提交",
+            "提交信息", "commit message", "提测", "merge 到 review",
+        ],
+        description="本地 Git 洞察与提交流程",
+        status="live",
+        pass_query=True,
+    ),
+    Route(
         skill="superteam-data",
         script="superteam-data/scripts/query_agentic_data.py",
         keywords=[

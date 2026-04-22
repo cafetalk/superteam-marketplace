@@ -7,6 +7,7 @@ from typing import Any
 
 CONFIG_DIRS = [".superteam"]
 _CONFIG_CACHE: dict[str, str] | None = None
+_FILE_CONFIG_CACHE: dict[str, str] | None = None
 
 _DEFAULT_SOURCE_DOCS = ".superteam/source_docs"
 _DEFAULT_TMP = ".superteam/tmp"
@@ -42,6 +43,50 @@ def source_docs_root() -> Path:
     return Path.home() / _DEFAULT_SOURCE_DOCS
 
 
+def _config_file_paths() -> list[Path]:
+    """Paths scanned for ``~/.superteam`` style INI (``KEY=value`` per line).
+
+    If ``SUPERTEAM_CONFIG`` points to an **existing file**, only that file is used
+    (full replacement). Otherwise the default ``~/.superteam/config`` (and
+    ``CONFIG_DIRS``) paths are scanned.
+    """
+    explicit = os.environ.get("SUPERTEAM_CONFIG")
+    if explicit:
+        p = Path(explicit).expanduser()
+        if p.is_file():
+            return [p]
+    return [Path.home() / name / "config" for name in CONFIG_DIRS]
+
+
+def read_file_config_flat() -> dict[str, str]:
+    """All ``KEY=value`` from Superteam config **files** only (no ``os.environ``).
+
+    First occurrence of a key wins (same as ``_load_config`` file pass). Used to
+    enumerate keys such as ``SUPERTEAM_DAILY_REPORT_REPO_*`` while still letting
+    ``env()`` overlay secrets from the environment.
+    """
+    global _FILE_CONFIG_CACHE
+    if _FILE_CONFIG_CACHE is not None:
+        return dict(_FILE_CONFIG_CACHE)
+    merged: dict[str, str] = {}
+    for cfg_path in _config_file_paths():
+        if cfg_path.exists():
+            for line in cfg_path.read_text().splitlines():
+                line = line.strip()
+                if line and "=" in line and not line.startswith("#"):
+                    k, v = line.split("=", 1)
+                    merged.setdefault(k.strip(), v.strip())
+    _FILE_CONFIG_CACHE = merged
+    return dict(merged)
+
+
+def clear_superteam_config_caches() -> None:
+    """Clear cached config (for tests or reload after editing files)."""
+    global _CONFIG_CACHE, _FILE_CONFIG_CACHE
+    _CONFIG_CACHE = None
+    _FILE_CONFIG_CACHE = None
+
+
 def _load_config() -> dict[str, str]:
     """Load config from file(s).
 
@@ -53,16 +98,7 @@ def _load_config() -> dict[str, str]:
     if _CONFIG_CACHE is not None:
         return _CONFIG_CACHE
     _CONFIG_CACHE = {}
-
-    # Collect candidate config file paths
-    paths: list[Path] = []
-    explicit = os.environ.get("SUPERTEAM_CONFIG")
-    if explicit:
-        paths.append(Path(explicit).expanduser())
-    for name in CONFIG_DIRS:
-        paths.append(Path.home() / name / "config")
-
-    for cfg_path in paths:
+    for cfg_path in _config_file_paths():
         if cfg_path.exists():
             for line in cfg_path.read_text().splitlines():
                 line = line.strip()

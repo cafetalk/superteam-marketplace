@@ -13,7 +13,13 @@
       "source": "./plugins/superteam",
       "description": "Superteam Hub — intelligent query router for team knowledge base with semantic search, member matching, and task insights",
       "version": "1.1.0",
-      "keywords": ["knowledge-base", "rag", "semantic-search", "team", "pgvector"]
+      "keywords": [
+        "knowledge-base",
+        "rag",
+        "semantic-search",
+        "team",
+        "pgvector"
+      ]
     }
   ]
 }

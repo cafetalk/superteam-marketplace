@@ -142,8 +142,9 @@ echo "  请选择要安装到哪些工具（可多选，用空格分隔）："
 echo "    1) Claude Code"
 echo "    2) Cursor"
 echo "    3) Nanobot"
+echo "    4) Codex"
 echo ""
-read -p "  输入编号（如 1 2 3）: " -a TOOLS
+read -p "  输入编号（如 1 2 3 4）: " -a TOOLS
 
 INSTALLED_ANY=false
 
@@ -291,6 +292,26 @@ else:
             fi
             INSTALLED_ANY=true
             ;;
+        4)
+            echo ""
+            echo -e "  ${CYAN}安装到 Codex...${NC}"
+            CODEX_SKILLS="$HOME/.codex/skills"
+            mkdir -p "$CODEX_SKILLS"
+
+            # Codex scans each direct child of ~/.codex/skills for SKILL.md.
+            # Keep Codex's built-in .system skills intact, and sync only this
+            # repository's skill directories one by one.
+            for skill_dir in "$SCRIPT_DIR"/skills/*; do
+                [ -d "$skill_dir" ] || continue
+                skill_name="$(basename "$skill_dir")"
+                mkdir -p "$CODEX_SKILLS/$skill_name"
+                rsync -a --delete --exclude='__pycache__' --exclude='*.pyc' \
+                    "$skill_dir/" "$CODEX_SKILLS/$skill_name/"
+            done
+            echo -e "    ${GREEN}✓${NC} 已同步 skills 到 $CODEX_SKILLS"
+            echo -e "    ${CYAN}提示：重启 Codex 会话后，新/更新的 skills 会重新加载${NC}"
+            INSTALLED_ANY=true
+            ;;
         *)
             echo -e "    ${RED}⚠${NC} 未知选项: $tool（跳过）"
             ;;
@@ -316,8 +337,9 @@ echo "  superteam-knowledgebase  — 知识库搜索"
 echo "  superteam-member — 成员查询与资料管理"
 echo "  superteam-data  — 业务数据洞察"
 echo "  superteam-git   — Git 洞察（支持 /superteam-git 自然语言时间范围）"
+echo "  superteam-daily-report — 日报数据流水线（含 Git 裸仓同步等）"
 echo "  superteam-linear — Linear 洞察 (coming soon)"
 echo "  superteam-report — 周报生成 (coming soon)"
 echo ""
-echo "重启 Claude Code 会话后生效。使用 /superteam 或直接提问即可。"
+echo "重启对应 AI 工具会话后生效。使用 /superteam 或直接提问即可。"
 echo ""

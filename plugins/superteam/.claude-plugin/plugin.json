@@ -2,5 +2,12 @@
   "name": "superteam",
   "description": "Unified knowledge base skills with flow orchestration, verification checkpoints, and multi-source data sync.",
   "version": "1.1.0",
-  "keywords": ["knowledge-base", "sync", "flow", "dingtalk", "pgvector", "orchestration"]
+  "keywords": [
+    "knowledge-base",
+    "sync",
+    "flow",
+    "dingtalk",
+    "pgvector",
+    "orchestration"
+  ]
 }

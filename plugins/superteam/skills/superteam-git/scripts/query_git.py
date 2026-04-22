@@ -184,6 +184,12 @@ def _get_default_author_patterns() -> list[str]:
 
 def discover_repos(workspace: Path) -> list[Path]:
     repos: list[Path] = []
+    # 当 workspace 直接指向裸仓根（如 mirror 的 foo.git）时立即返回，避免 os.walk 进入 objects/
+    if workspace.is_dir():
+        w = workspace.resolve()
+        if (w / "HEAD").is_file() and (w / "objects").is_dir() and not (w / ".git").exists():
+            return [w]
+
     for root, dirs, _files in os.walk(workspace, topdown=True):
         if ".git" in dirs:
             repos.append(Path(root))
