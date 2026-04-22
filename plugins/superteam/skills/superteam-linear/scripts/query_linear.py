@@ -127,6 +127,33 @@ class _StdioMcpClient:
         return res
 
 
+def _emit_json(payload: dict[str, Any]) -> bool:
+    """Write JSON payload to stdout robustly for non-blocking pipes."""
+    try:
+        text = json.dumps(payload, ensure_ascii=False, indent=2, default=str) + "\n"
+        sys.stdout.buffer.write(text.encode("utf-8"))
+        sys.stdout.buffer.flush()
+        return True
+    except (BlockingIOError, BrokenPipeError) as e:
+        print(f"[superteam-linear] failed to write JSON output: {e}", file=sys.stderr, flush=True)
+        return False
+
+
+def _truncate_issues(result: Any, max_items: int) -> tuple[Any, bool, int | None]:
+    """Truncate `result.issues` to max_items; return (result, truncated, total)."""
+    if not isinstance(result, dict):
+        return result, False, None
+    issues = result.get("issues")
+    if not isinstance(issues, list):
+        return result, False, None
+    total = len(issues)
+    if total <= max_items:
+        return result, False, total
+    out = dict(result)
+    out["issues"] = issues[:max_items]
+    return out, True, total
+
+
 def _read_args_json(args_json: str | None) -> dict:
     """Read JSON arguments from --args-json or stdin (if piped)."""
     if args_json:
@@ -196,8 +223,14 @@ def main() -> int:
     parser.add_argument(
         "--first",
         type=int,
-        default=20,
-        help="自动 list_issues 返回数量（默认 20）。",
+        default=50,
+        help="自动 list_issues 返回数量（默认 50）。",
+    )
+    parser.add_argument(
+        "--max-items",
+        type=int,
+        default=50,
+        help="输出中 issues 最大条数（默认 50，超出会截断并标记 truncated）。",
     )
     parser.add_argument(
         "--tool",
@@ -219,6 +252,8 @@ def main() -> int:
         help="仅在与 --tool save_issue 联用时：合并对应标签名，并在未指定 priority 时默认 3（与 superteam-linear SKILL 约定一致）。",
     )
     args = parser.parse_args()
+    if args.max_items <= 0:
+        raise _LocalMcpError("--max-items 必须 > 0")
 
     cmd = ["npx", "-y", "mcp-remote", "https://mcp.linear.app/mcp"]
     try:
@@ -226,7 +261,7 @@ def main() -> int:
             tools = client.list_tools()
 
             if args.list_tools:
-                print(json.dumps({
+                ok = _emit_json({
                     "skill": "superteam-linear",
                     "mode": "local-mcp",
                     "type": "tools_list",
@@ -234,8 +269,8 @@ def main() -> int:
                         {"name": t.name, "inputSchema": t.input_schema}
                         for t in tools
                     ],
-                }, ensure_ascii=False, indent=2, default=str))
-                return 0
+                })
+                return 0 if ok else 1
 
             # Advanced generic tool call (optional)
             if args.tool:
@@ -254,16 +289,23 @@ def main() -> int:
                     call_args = _merge_save_issue_defaults(call_args, args.issue_kind)
 
                 result = client.call_tool(selected.name, call_args)
+                result, truncated, total = _truncate_issues(result, args.max_items)
 
-                print(json.dumps({
+                output = {
                     "skill": "superteam-linear",
                     "mode": "local-mcp",
                     "type": "tool_call",
                     "tool": selected.name,
                     "arguments": call_args,
                     "result": result,
-                }, ensure_ascii=False, indent=2, default=str))
-                return 0
+                }
+                if truncated:
+                    output["truncated"] = True
+                    output["total"] = total
+                    output["max_items"] = args.max_items
+
+                ok = _emit_json(output)
+                return 0 if ok else 1
 
             # Default auto mode (no tool selection)
             tool_names = {t.name for t in tools}
@@ -288,6 +330,7 @@ def main() -> int:
                 if args.query:
                     call_args["query"] = args.query
                 result = client.call_tool(tool_name, call_args)
+                result, truncated, total = _truncate_issues(result, args.max_items)
                 output = {
                     "skill": "superteam-linear",
                     "mode": "local-mcp",
@@ -297,23 +340,27 @@ def main() -> int:
                     "arguments": call_args,
                     "result": result,
                 }
+                if truncated:
+                    output["truncated"] = True
+                    output["total"] = total
+                    output["max_items"] = args.max_items
 
-            print(json.dumps(output, ensure_ascii=False, indent=2, default=str))
-            return 0
+            ok = _emit_json(output)
+            return 0 if ok else 1
     except FileNotFoundError:
-        print(json.dumps({
+        ok = _emit_json({
             "skill": "superteam-linear",
             "error": "local_mcp_missing",
             "message": "npx not found. Install Node.js (includes npx) to use this script.",
-        }, ensure_ascii=False, indent=2))
-        return 1
+        })
+        return 1 if ok else 1
     except _LocalMcpError as e:
-        print(json.dumps({
+        ok = _emit_json({
             "skill": "superteam-linear",
             "error": "local_mcp_failed",
             "message": str(e),
-        }, ensure_ascii=False, indent=2))
-        return 1
+        })
+        return 1 if ok else 1
 
 
 if __name__ == "__main__":
