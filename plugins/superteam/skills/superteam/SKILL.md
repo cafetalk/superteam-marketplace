@@ -23,10 +23,11 @@ superteam 是面向用户的智能代理，不参与数据管道。它是知识�
 - 未来：多轮对话、追问、引用溯源
 
 ❌ 不负责：
+- Hub 自身不直接执行写操作（仅负责意图识别与路由）
+- 但可路由到具备写能力的下游 skill（如 superteam-git）执行提交/提测流程
 - 数据同步 / 分块 / 入库（由 superteam-sync 编排）
 - 触发 flow
 - 直接操作数据源 API
-- 任何写操作
 
 ## 可调用 Skill 清单
 
@@ -36,6 +37,7 @@ superteam 是面向用户的智能代理，不参与数据管道。它是知识�
 | superteam-member | 成员查询、成员智能匹配、成员资料管理（写操作仅 Direct 管理员） | ✅ 已上线 |
 | superteam-data | 业务侧线上数据（活动/投放、badge、provider、产品 Quest 等，MCP agentic_data） | ✅ `query_agentic_data.py`（桥接 MCP） |
 | superteam-linear | Linear 工单/迭代（官方 MCP HTTP + Bearer） | ✅ `query_linear.py` |
+| superteam-git | 本地 Git 洞察、提交代码、提测合并（按 superteam-git 规范执行） | ✅ `query_git.py` |
 | superteam-report | 智能周报生成 | 🔨 骨架实现（GitLab/Agent 数据源待接入） |
 
 Hub **不调用** superteam-sync、sync-*、process-*、store-*、source-* 系列 skill。
@@ -48,6 +50,17 @@ python superteam/scripts/route.py --query "用户的问题" --execute
 ```
 
 不加 `--execute` 则只输出路由分类结果（JSON），不实际执行脚本。
+
+## 执行硬约束（必须遵守）
+
+<HARD-GATE>
+当用户消息包含 `/superteam` 前缀时，Agent 必须先通过 `skills/superteam/scripts/route.py` 完成路由判定，再决定是否执行下游 skill。
+禁止绕过路由直接执行下游动作（尤其是任何写操作）。
+</HARD-GATE>
+
+1. **先路由后执行**：先运行 `route.py --query "..." --json`（或等价分类步骤）确认命中 skill，再进入执行阶段。
+2. **Git 类请求强制走 superteam-git**：命中“提交/commit/push/提测/merge”等关键词时，只能通过 `superteam-git/scripts/query_git.py` 执行，不得直接调用 git 命令完成最终动作。
+3. **执行前可追溯性**：未展示或记录路由结果（至少包含 `skill`、`script`、`score`）时，不得执行下游写操作。
 
 ### 多路由命中
 

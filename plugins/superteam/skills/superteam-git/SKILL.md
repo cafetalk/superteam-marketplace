@@ -61,9 +61,9 @@ python skills/superteam-git/scripts/query_git.py "查看我3.15号到4.1号的�
 
 ## 顺序（必须）：先有任务 id，再写 commit
 
-1. **在生成最终 commit message、执行 `git commit` 之前**，必须已经拿到 **`TASK_ID`（如 ACB-91）与 `TASK_URL`**：或来自用户选择的已有任务，或来自「创建新任务」成功返回值。
+1. **在生成最终 commit message、执行 `git commit` 之前**，必须已经拿到至少 1 个任务的 **`TASK_IDS/TASK_URLS`**（如 `ACB-91`）：可来自用户多选的已有任务，或来自「创建新任务」成功返回值。
 2. **禁止**先 `git commit`、再补 Linear 任务、再指望事后 amend（除非用户明确要求 `git commit --amend` 修正 footer）。
-3. 正文与 footer 一次写全：`Ref: <TASK_ID>`、`Link: <TASK_URL>` 与 type/body 一并进入同一次提交。
+3. 正文与 footer 一次写全：对每个关联任务都写 `Ref: <TASK_ID>`，并补充对应 `Link: <TASK_URL>`；与 type/body 一并进入同一次提交。
 
 ## Agent 终端与外网权限（必须）
 
@@ -108,7 +108,7 @@ python skills/superteam-git/scripts/query_git.py "查看我3.15号到4.1号的�
 
 1. **`save_linear_issue_once.py` 已内置回收**：当 `save_issue` 在 Linear 侧已成功但响应解析失败时，脚本会**自动**再调 `list_issues`，在 **`--recover-within-seconds`（默认 300）** 内、**规范化标题 + `team` 一致**的 issue 中取 **createdAt 最新**的一条，写入去重缓存并 **stdout 返回 `recovered: true`**。Agent 应将该输出视为成功，用其中 `issue.id` / `issue.url` 写 commit footer，**不要**立刻再次执行创建脚本。
 2. 若脚本仍报错且无 `recovered`：再用宿主 Linear MCP 或 `query_linear.py --tool list_issues` **人工核对**是否已有同标题新单（超时重试时上游可能已成功）。
-3. **若已存在**：取该条的 **id / url** 作为 `TASK_ID` / `TASK_URL`，**禁止**再次 `save_issue`。
+3. **若已存在**：取该条的 **id / url** 并并入 `TASK_IDS/TASK_URLS`，**禁止**再次 `save_issue`。
 4. **若确认不存在**且回收与列表均无记录：可**单次**应急执行 `query_linear.py --tool save_issue`（仍需先完成预检）；同一轮流程内仍**不得**连续两次裸 `save_issue`。
 
 ## 限制（必须）：新建任务前预检
@@ -186,7 +186,7 @@ python {SKILL_DIR}/../superteam-linear/scripts/query_linear.py \
 - `id` 设为任务的 identifier（如 `ACB-49`），`label` 设为 `<identifier> - <title> (<status>)`。
 - **确保每个 option 的 `id` 和 `label` 都非空**，跳过任何空值条目，避免出现空白选项。
 - 最后追加一个额外 option：`id` 设为 `__create_new__`，`label` 设为 `创建新任务`。
-- `allow_multiple` 设为 `false`（单选）。
+- `allow_multiple` 设为 `true`（多选）。
 
 示例调用：
 
@@ -201,18 +201,22 @@ python {SKILL_DIR}/../superteam-linear/scripts/query_linear.py \
       {"id": "ACB-41", "label": "ACB-41 - Provider TEE/TLS 双模式设计 (In Review)"},
       {"id": "__create_new__", "label": "创建新任务"}
     ],
-    "allow_multiple": false
+    "allow_multiple": true
   }]
 }
 ```
 
 ### 用户选择已有任务
 
-记录用户所选 option 的 `id` 作为 `TASK_ID`（如 `ACB-49`），并从同一任务对象中提取 `url` 作为 `TASK_URL`。
+记录用户所选 options 的 `id` 列表作为 `TASK_IDS`（如 `["ACB-49","ACB-41"]`），并从对应任务对象提取 `url` 列表作为 `TASK_URLS`。
 
 ### 用户选择「创建新任务」
 
-即用户选中 `__create_new__`：
+即用户所选 options 包含 `__create_new__`：
+
+0. 若 `__create_new__` 与已有任务同时被选中，先提示用户二次确认：
+   - 允许保留“已有任务 + 新建任务”作为最终关联集合；
+   - 或让用户重选（避免误选）。
 
 1. 询问用户新任务的**标题**。
 2. **（必须）**按上文「限制（必须）：新建任务前预检」运行 `preflight_linear_issue.py`，并按 `risk` / `policy` 走 `AskQuestion`，必要时阻止或二次确认后再创建。
@@ -228,7 +232,7 @@ python {SKILL_DIR}/scripts/save_linear_issue_once.py \
 
    - `team`：从步骤 1 返回的任务列表中取一条已有任务的 `team` 字段（通常同一团队的任务共用同一 team）；若列表为空或无法获取，则询问用户。
    - 解析 stdout JSON：使用 `issue.id`、`issue.url`；若 `reused: true`，说明去重生效（本次未再打创建接口），仍用返回的 `issue` 写 commit footer，并**不要**再次运行本脚本或裸 `save_issue`。
-4. 将 `issue.id` 作为 `TASK_ID`，`issue.url` 作为 `TASK_URL`。
+4. 将 `issue.id` / `issue.url` 并入 `TASK_IDS/TASK_URLS`（去重）。
 
 ## 3. 分析代码改动并生成 commit message
 
@@ -238,7 +242,7 @@ python {SKILL_DIR}/scripts/save_linear_issue_once.py \
    - 格式：`type: description`（**不使用 scope**，不加括号）
    - 常见 type：`feat`、`fix`、`docs`、`style`、`refactor`、`test`、`chore`
    - 可包含多行 body 描述（空行分隔）
-   - 末尾使用标准 footer 追加两行：`Ref: <TASK_ID>` 与 `Link: <TASK_URL>`
+   - 末尾使用标准 footer 追加多行：对 `TASK_IDS` 中每个任务追加 `Ref: <TASK_ID>`，并追加对应的 `Link: <TASK_URL>`
 
 ### commit message 示例
 
@@ -255,7 +259,9 @@ Link: https://linear.app/xxx/issue/SUP-7
 fix: 修复登录页面超时未重定向的问题
 
 Ref: SUP-12
+Ref: SUP-34
 Link: https://linear.app/xxx/issue/SUP-12
+Link: https://linear.app/xxx/issue/SUP-34
 ```
 
 ## 4. 确认并提交
@@ -280,8 +286,8 @@ Link: https://linear.app/xxx/issue/SUP-12
 
 3. **用户选择「确认提交」**：
    - 执行 `git add .`（或根据用户意图选择性添加文件）
-   - 执行 `git commit` 并使用该 message（含末尾的 `TASK_ID`）
-4. **用户选择「我要修改 message」**：请用户给出修改后的 message，若末尾未包含 `Ref: <TASK_ID>` 与 `Link: <TASK_URL>`，自动补齐后再提交。
+   - 执行 `git commit` 并使用该 message（含末尾全部 `TASK_IDS` 的 footer）
+4. **用户选择「我要修改 message」**：请用户给出修改后的 message，若末尾未包含全部 `TASK_IDS/TASK_URLS` 对应的 `Ref` / `Link` 行，自动补齐后再提交。
 5. **用户选择「取消，不提交」**：终止，不提交。
 
 ## 5. 提交完成
