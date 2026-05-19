@@ -12,7 +12,7 @@
 - 日志格式见 `07-exception-and-logging.md`
 
 **Metrics**：
-- TODO(@allen)：是否引入 Micrometer + Prometheus？
+- `〔t-rex 现状〕`：**未引入 Micrometer + Prometheus** —— Tracing (Zipkin) 已覆盖 RPC / HTTP / DB 关键事件 + MDC，Metrics 单独立轨暂不必要；业务级监控由各服务自行打日志 + SLS 聚合。后续若有跨服务 SLO / 容量基线诉求再评估。
 
 ## 配置中心【强制】
 
@@ -22,7 +22,7 @@
 
 **规约**：
 - 业务配置走 Nacos（按 namespace 隔离环境：local / dev / test / prod）
-- 敏感配置（密钥等）：TODO(@allen) — 走 Nacos 加密 / KMS / 环境变量？
+- **敏感配置（密钥等）**：`〔t-rex 现状〕`已有方案走 **Nacos 加密 namespace**；KMS / 环境变量是后续细化（具体走哪类的决策见 09-security 章 "密钥管理细则"）
 - 本地开发用 `config-local.properties` 覆盖；不 commit 个人敏感配置
 
 **反例**：
@@ -34,32 +34,23 @@
 
 ## 监控告警
 
-TODO(@allen)：
-- 监控平台是哪个（云监控 / Prometheus / 自建）？
-- 告警接收人 / on-call 轮值
-- 告警规则模板（错误率 / P99 延迟 / 队列堆积）
-- 业务级监控（如 Campaign 关键指标）
+`〔运维相关，见 ops runbook〕`：监控平台 / 告警接收人 / on-call 轮值 / 告警规则模板等由 **ops/gitlab-cis** + ops runbook 维护，不在 handbook 内重述（避免双向漂移）。具体接入位置：服务上线时由 ops 配置；研发只需保证日志 → SLS 与 tracing → Zipkin 已接入。
 
 ## 性能与容量
 
-TODO(@allen)：
-- 接口性能基线（P99 < ?）
-- 容量评估流程（新服务上线前的预估）
-- 压测要求
+**待性能平台对齐**：
+
+- [ ] 接口性能基线（P99 < ?）—— 平台准备好后回填
+- [ ] 容量评估流程（新服务上线前的预估）
+- [ ] 压测要求
 
 ## 密钥与机密管理
 
-TODO(@allen)：
-- 哪些密钥走 Nacos 加密
-- 哪些走 KMS / 阿里云 RAM
-- 私钥不入库的强约束
+合并到上方 **配置中心 §敏感配置** 段；细则待 09-security 章"密钥管理细则" ADR 完成后回填。
 
 ## 故障应急
 
-TODO(@allen)：
-- 故障分级（P0 / P1 / P2）
-- 应急流程
-- 复盘要求
+`〔运维相关，见 ops runbook〕`：故障分级（P0 / P1 / P2）/ 应急流程 / 复盘要求由 ops 团队维护。研发侧职责见 `common/04-ci-and-release.md` 的回滚 SOP + on-call 段。
 
 ## 维护
 

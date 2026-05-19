@@ -72,4 +72,4 @@
 
 ---
 
-TODO(@allen)：RFC 归档位置（trex-docs / 各仓 technical_design / 钉钉文档？）。
+`〔t-rex 现状〕`：**RFC 归档位置 —— 各仓 `technical_design/` 目录**（trex-admin / trex-persona-feast / anchor-web 等仓已落地此模式）。跨仓 / 跨域的大 RFC 走钉钉文档先讨论 + 落定稿后 paste 到主仓 `technical_design/`。无中心化 trex-docs 仓。

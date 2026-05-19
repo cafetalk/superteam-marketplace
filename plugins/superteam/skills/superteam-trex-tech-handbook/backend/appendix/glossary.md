@@ -5,29 +5,29 @@
 ## 主条目
 
 ### com.drex / xyz.trex (包名前缀)
-- `com.drex.*` — 老工程 groupId / 包前缀（drex-core / drex-passport / trex-web 等）。**不强制迁移**
+- `com.drex.*` — 老工程 groupId / 包前缀（trex-core / trex-passport / trex-web 等仓内仍在用）。**不强制迁移**
 - `xyz.trex.*` — 新工程统一前缀（2026-05 起新建）
 - 详见 `backend/04-coding-standards.md`
 
 ### Dubbo
 Apache Dubbo — t-rex 后端**服务间**通信协议。接口写在 `<project>-api` 模块，命名 `Remote<Domain>Service`。
 
-### drex-core
-t-rex 广告主 / 投放计划领域服务的样板。按技术分层切模块 (`core-api` / `core-dal` / `core-service` / `core-web` / `core-graphql` / `core-model`)。groupId `com.drex`。
+### trex-core
+t-rex 广告主 / 投放计划领域服务的样板。按技术分层切模块 (`core-api` / `core-dal` / `core-service` / `core-web` / `core-graphql` / `core-model`)。GitLab path 已从 `drex-core` rename 到 `trex-core`（TREX-449, 2026-05-14）；包名仍 `com.drex.core.*`。
 
-### drex-passport
-t-rex 用户身份 / 登录 / 签名验证 / Session 管理服务。
+### trex-passport
+t-rex 用户身份 / 登录 / 签名验证 / Session 管理服务。GitLab path 已从 `drex-passport` rename 到 `trex-passport`（TREX-449, 2026-05-14）；模块名仍 `customer-*` 系。
 
-### evg-scaffold
-t-rex 工程脚手架 / 生成器。仓库 https://gitlab.com/Keccak256-evg/gwave-dev/evg-scaffold 。也可作 jar 依赖按需引入。详见 `backend/02-architecture.md`。
+### trex-scaffold
+t-rex 工程脚手架 / 生成器。仓库 https://gitlab.com/Keccak256-evg/t-rex/scaffold/trex-scaffold 。也可作 jar 依赖按需引入。详见 `backend/02-architecture.md`。
 
 ### Gateway 形态
 t-rex 后端两种工程形态之一。代表项目 trex-web。按业务领域分模块，对外提供 REST API。详见 `backend/03-module-design.md`。
 
 ### GraphQL
-drex-core 的 `core-graphql` 模块提供 GraphQL 查询入口，适用于多字段复杂查询。技术栈 `spring-boot-starter-graphql` + `graphql-java-extended-scalars` 22.0。
+trex-core 的 `core-graphql` 模块提供 GraphQL 查询入口，适用于多字段复杂查询。技术栈 `spring-boot-starter-graphql` + `graphql-java-extended-scalars` 22.0。
 
-### kiki-framework
+### trex-framework
 t-rex 后端所有工程的 **parent POM**。提供 Spring Boot 版本管理 + 一组 starter（OTS / Redis / Tracing 等）。详见 `backend/02-architecture.md`。
 
 ### Mapper (MyBatis-Plus)
@@ -84,4 +84,3 @@ git 的隔离工作区机制。t-rex 推荐对每个新分支创建独立 worktr
 
 - 新增技术栈 / 概念 / 缩写时同步更新本表
 - 条目尽量包含"在 t-rex 是什么 + 在哪里详读"两部分
-- TODO(@allen): 建立一个机制（pre-commit hook 或 CI 检查）确保新引入的中间件 / 框架在 PR 合入前补充术语表条目

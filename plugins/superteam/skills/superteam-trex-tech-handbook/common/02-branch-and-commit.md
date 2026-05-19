@@ -1,10 +1,10 @@
 # 分支命名 + Commit message + Push Rule
 
-本章规则由 **GitLab Push Rule 强制**：违反则 push 被直接拒绝。Push Rule regex 是 **org-wide 共享模版**（所有 t-rex 项目共用一份），同时容纳 trex team 的新规约 + 其他团队的老规约。完整 regex 与项目前缀清单见 `appendix/project-prefix.md`。
+本章规则由 **GitLab Push Rule 强制**：违反则 push 被直接拒绝。Push Rule regex 是**每项目独立配置**，t-rex sub-group（`Keccak256-evg/t-rex/*`）下所有项目使用统一标准 regex。完整 regex + 老前缀归档见 `appendix/project-prefix.md`。
 
 ## trex team 分支命名【强制】
 
-新规约 —— 去掉项目前缀，简洁版。
+去掉项目前缀的简洁版。
 
 **公式**：
 
@@ -12,8 +12,8 @@
 <stage>_<date>_<name>
 ```
 
-- `stage` ∈ `{ pre, auto, dev, alpha, beta, feature, hotfix, review }`（8 个；老规约里的 `duom` 不再使用）；其中 `dev` / `review` / `beta` 是 t-rex 主 pipeline 的核心 stage
-- `date` **必填**：6 位 `YYMMDD`（**trex 项目推荐**）或 8 位 `YYYYMMDD`
+- `stage` ∈ `{ pre, auto, dev, alpha, beta, feature, hotfix, review }`（8 个；老规约里的 `duom` v3.0 起不再使用）；其中 `dev` / `review` / `beta` 是 t-rex 主 pipeline 的核心 stage
+- `date` **必填**：**6 位 `YYMMDD`（新建必须用这个）**；8 位 `YYYYMMDD` / 4 位 `MMDD` 仅 grandfather 现存分支
 - `name` **必填**：2–30 字符，限 `[.A-Za-z0-9\-]`
 
 **示例**：
@@ -52,10 +52,12 @@ dev | beta | master
 ```text
 ❌ feature/add-campaign            （斜杠 / 不允许）
 ❌ DEV_260512_campaign             （stage 大写）
-❌ dev_2605_campaign               （日期不是 6 位 YYMMDD 或 8 位 YYYYMMDD）
+❌ dev_2605_campaign               （日期长度不对：必须 6 位 YYMMDD，或 grandfather 的 8/4 位）
 ❌ dev_260512                      （name 必填，不能省）
 ❌ dev                             （`dev` 是长期分支，短期开发用 `dev_<date>_<name>`）
-❌ trexdev_260512_campaign         （新规约不带项目前缀；trexdev 走 →【兼容/老规约】节）
+❌ trexdev_260512_campaign         （**v3.0 禁止**：项目前缀老形式已从 Push Rule 移除）
+❌ drexdev_20260512_xxx            （**v3.0 禁止**：同上；现存老分支 grandfather 但新建一律拒）
+❌ drex_master                     （**v3.0 禁止**：`<project>_master` 长期分支已从白名单移除；用 bare `master`）
 ```
 
 ## Commit message【强制】
@@ -131,87 +133,45 @@ git branch -d dev_260512_xxx
 - `review_*` 分支生命周期短，merge 后即可 `worktree remove`
 - `dev_*` 可保留作个人工作历史；远端无需保留
 
-## 兼容 / 老规约（其他团队仍在用）
+## 老前缀归档（**v3.0 禁止新建**）
 
-GitLab Push Rule regex 是 **org 共享模版**，同时容纳：
-- trex team 新规约（上面那套，**本团队首选**）
-- 其他团队仍在用的老规约（带项目前缀的形式）
+2026-05-19 v3.0 起，Push Rule regex 不再容纳项目前缀老形式：
 
-老规约形式：
+- 旧短期形式：`drexdev_20260507_xxx` / `anchorreview_xxx` / `trexbeta_xxx` 等 —— **新建一律 push 被拒**
+- 旧长期分支：`drex_master` / `osp_master` / `<project>_master` 系列 + `aspen-pre` / `zeek_pre_master` 等 —— **新建一律拒；现存的需迁移到 bare `master`**
 
-```text
-<project><stage>_<date>?_<name>?
+**仓里现存的老前缀分支怎么处理？**
+
+```bash
+# 把 drexdev_20260507_adv_dashboard 上的 commits 迁到新规约
+git checkout drexdev_20260507_adv_dashboard
+git checkout -b dev_260507_adv-dashboard     # 6 位日期 + kebab-case name
+git push origin dev_260507_adv-dashboard
+# 老分支保留作历史快照，不再 push commits
 ```
 
-- `project` ∈ `{ drex, anchor, dreamtemple, kiki, duom, vibra, trex, as, rosetta, aspen, stanly, osp, talent, zeek, mugen, mon, quests, alien, adgm, dojo3, slg }`
-- `stage` ∈ `{ pre, auto, dev, alpha, beta, feature, hotfix, review, duom }`（多了 `duom`）
-- `date` 可选；4 位 `MMDD` 或 8 位 `YYYYMMDD`（**不接受 6 位**）
-- `name` 可选；2–30 字符
-
-老示例（**其他团队**用，trex team 不写新分支用这个）：
-
-```text
-trexdev_20260512_campaign
-trexreview_20260513_campaign
-drexhotfix_0512_balance-bug
+**长期分支迁移**（如还有 `<project>_master`）：
+```bash
+git push origin drex_master:master     # 创建 bare master（如不存在）
+# 在 GitLab Settings → Repository → Default branch 切到 master
+git push origin --delete drex_master   # 删老名
 ```
 
-老长期分支白名单（仍合法，包括 trex team 历史遗留）：
+老 ↔ 新 短期分支对照表（**仅供识别历史分支**；新建不允许）：
 
-```text
-dev | beta | master | main
-<project>_master    例：drex_master / osp_master / talent_master / kiki_master / mon_master / 
-                       rosetta_master / quests_master / zeek_master / alien_master / dojo3_master / 
-                       adgm_master / slg_master / dreamtemple_master / duom_master
-aspen-pre | beta_aspen_red | zeek_pre_master
-```
-
-**【强制】老规约长期分支 ↔ 新规约长期分支映射**（trex team 内迁移参考）：
-
-| 老规约 | 新规约 | 说明 |
-|---|---|---|
-| `<project>dev` (无日期 / 无 name) | `dev` | 长期 dev 集成分支（test env 部署源）|
-| `<project>beta` (无日期 / 无 name) | `beta` | 长期 beta 灰度 / 预发分支 |
-| `<project>_master` | `master` | 长期 prod 主分支 |
-
-老规约 regex 允许 `<project><stage>` 后**省略** `_<date>_<name>` 段（regex 里那个 `(|_...)` 分支），所以 `drexdev` / `drexbeta` / `anchordev` 这种**无日期 bare 形式**是合法的"长期分支等效物"（项目前缀版本）—— 与新规约的 bare `dev` / `beta` 语义相同。
-
-**`drexdev` / `drexbeta` / `anchordev` 等 是历史遗留，不是 stage 简写**。trex team 新工作**统一用 bare `dev` / `beta` / `master`**。
-
-短期分支同步迁移：
-
-| 老规约 | 新规约 |
+| 历史形式（v3.0 禁止新建） | 新规约（v3.0 强制） |
 |---|---|
 | `<project>dev_<YYYYMMDD>_<name>` | `dev_<YYMMDD>_<name>` |
 | `<project>review_<YYYYMMDD>_<name>` | `review_<YYMMDD>_<name>` |
 | `<project>beta_<YYYYMMDD>_<name>` | `beta_<YYMMDD>_<name>` |
 | `<project>hotfix_<YYYYMMDD>_<name>` | `hotfix_<YYMMDD>_<name>` |
 | `<project>feature_<YYYYMMDD>_<name>` | `feature_<YYMMDD>_<name>` |
-| `<project>pre_<YYYYMMDD>_<name>` | `pre_<YYMMDD>_<name>` |
-| `<project>alpha_<YYYYMMDD>_<name>` | `alpha_<YYMMDD>_<name>` |
-| `<project>auto_<YYYYMMDD>_<name>` | `auto_<YYMMDD>_<name>` |
 
-`〔rename SOP〕` 在线 rename 长期分支：
-```bash
-# 例：把 drexdev 迁到 dev
-git push origin drexdev:dev          # 创建新名（如 dev 不存在）
-# 在 GitLab Settings → Repository → Default branch 切到 dev（如需要）
-git push origin --delete drexdev     # 删老名
-```
-对 `<project>_master` → `master` 的迁移同理；注意可能撞我们设的 `Bash(git push *:master)` deny rule，要走 GitLab UI 或临时 unset deny。
-
-## trex team 迁移目标（team policy，非 regex 强制）
-
-- **2026-05-13 起**：trex team 新工作**统一用新规约**（bare `dev` / `beta` / `master` 作长期；短期用 `<stage>_<date>_<name>`）
-- **2026-06-30 前**：trex team 完成
-  - in-flight 老短期分支 merge 或重命名到新规约
-  - **长期分支重命名**：`<project>dev` → `dev`、`<project>beta` → `beta`、`<project>_master` → `master`
-- 6/30 之后：trex team 内部不再创建任何带项目前缀的分支；handbook 把"兼容/老规约"节标注为 archival reference（regex 不变，仍兼容其他团队）
-
-`〔历史归档〕` 2026-05-13 trex team 首次大规模分支治理（22 仓清理 709 分支 + 重命名 12 长期分支 + master 整合 3 仓）的事件记录见 `appendix/branch-cleanup-2026-05-13.md`。
+`〔历史归档〕` 2026-05-13 trex team 首次大规模分支治理（22 仓清理 709 分支 + 重命名 12 长期分支 + master 整合 3 仓）见 `docs/ops/2026-05-13-branch-cleanup.md`。  
+2026-05-19 v3.0 push rule 收紧 + 6 位日期落地的 rollout 见 `docs/ops/2026-05-19-push-rule-rollout.md`。
 
 ## 维护
 
-- Push Rule regex 在 `appendix/project-prefix.md` 内有完整版 + 项目前缀清单 + 变更日志
-- regex 变更须经 GitLab admin 修改 Push Rule + 同步更新本章 + 在 appendix 加变更日志
-- 因 regex 是 org 共享模版，**任何对 regex 的修改必须是纯添加**（不删除老 pattern，否则会破其他团队）
+- Push Rule regex 完整版 + 老前缀归档 + 变更日志见 `appendix/project-prefix.md`
+- regex 变更须经 GitLab admin 修改 Push Rule（**每项目独立**，t-rex sub-group 下 61 个项目要逐一 PUT）+ 同步更新本章 + 在 appendix 加变更日志
+- v3.0 起，handbook 与 GitLab 真实 push rule 必须保持一致（通过 conformance audit 验证）

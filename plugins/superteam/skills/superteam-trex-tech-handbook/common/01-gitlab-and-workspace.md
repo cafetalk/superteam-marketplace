@@ -7,17 +7,17 @@ gitlab.com/
 └── Keccak256-evg/                  # 根 group
     ├── t-rex/                      # 业务 group
     │   ├── backend-java/           # ⭐ Java 后端微服务 sub-group  (6 项)
-    │   │   ├── trex-core           (URL: drex-core)
-    │   │   ├── trex-passport       (URL: drex-passport)
+    │   │   ├── trex-core
+    │   │   ├── trex-passport
     │   │   ├── trex-web
-    │   │   ├── trex-endpoint       (URL: drex-endpoint)
-    │   │   ├── trex-event          (URL: drex-event)
+    │   │   ├── trex-endpoint
+    │   │   ├── trex-event
     │   │   └── trex-admin
     │   │
     │   ├── backend-python/         # ⭐ Python 后端微服务 sub-group  (3 项)
-    │   │   ├── trex-hexagonal      (URL: hexagonal)
-    │   │   ├── trex-persona-feast  (URL: persona-feast)
-    │   │   └── trex-prism-engine   (URL: yield-engine)
+    │   │   ├── trex-hexagonal
+    │   │   ├── trex-persona-feast
+    │   │   └── trex-prism-engine
     │   │
     │   ├── anchor/                 # ⭐ anchor 子领域 sub-group  (13 项 / 混栈)
     │   │   ├── anchor-core         # Java
@@ -34,12 +34,15 @@ gitlab.com/
     │   │   ├── anchor-sdk          # Node / TS
     │   │   └── anchor-labs         # Foundry / Solidity
     │   │
-    │   └── skills/                 # AI / 工具 skill sub-group（含本 handbook 自身）
-    │       ├── superteam
-    │       └── superteam-mcp-server
-    │
-    ├── gwave-dev/                  # 内部脚手架 / 基础设施
-    │   └── evg-scaffold            # 见 backend/02-architecture.md
+    │   ├── skills/                 # AI / 工具 skill sub-group（含本 handbook 自身）
+    │   │   ├── superteam
+    │   │   └── superteam-mcp-server
+    │   │
+    │   └── scaffold/               # ⭐ 基础设施 / lib / 工程脚手架 (4 项)
+    │       ├── trex-framework      # parent POM + runtime starters（取代历史 gwave-dev/kiki-framework）
+    │       ├── trex-scaffold       # 新建工程脚手架（取代历史 gwave-dev/evg-scaffold）
+    │       ├── knotify             # 通知 lib（计划下沉到 trex-widget）
+    │       └── kseq                # 序列 lib（计划下沉到 trex-widget）
     │
     └── ops/
         └── gitlab-cis              # 集中托管的 CI 规则（见 common/04-ci-and-release.md）
@@ -53,13 +56,14 @@ gitlab.com/
 | **新 Python 后端微服务** | `t-rex/backend-python/` | `trex-hexagonal`, `trex-persona-feast` |
 | **anchor 子领域项目（任何栈）** | `t-rex/anchor/` | `anchor-*`（含 Java / Node / Foundry） |
 | **AI / 工具 skill** | `t-rex/skills/` | `superteam` |
-| **历史 / 跨域基础设施** | `gwave-dev/` | `evg-scaffold` |
+| **基础设施 / lib / 工程脚手架** | `t-rex/scaffold/` | `trex-framework`, `trex-scaffold`, `knotify`, `kseq` |
 
 详细服务清单见 `backend/01-microservices.md`。
 
 `〔t-rex 现状〕`：
 - **22 个后端项目**已 100% 归位到上述 sub-group（2026-05-13 迁移完毕）
-- GitLab **display name** 已统一到 `trex-*` / `anchor-*` 前缀，但**仓库 URL path** 仍保留原始名字（如 `trex-core` 的 URL path 是 `drex-core`）—— 是否启动 path rename 见 `backend/01-microservices.md` TODO
+- **scaffold/ sub-group 2026-05-19 新建**，把基础设施 / lib 工程从 `gwave-dev/` fork 过来或 transfer（详见 `docs/ops/2026-05-13-subgroup-migration.md`）
+- GitLab **display name** 与 **URL path** 已全部对齐（2026-05-14 完成，TREX-449）
 
 ## 本地工作区目录建议【推荐】
 
@@ -88,17 +92,22 @@ gitlab.com/
 │   ├── anchor-web/
 │   └── ... (13 项)
 │
-└── skills/                         # 镜像 t-rex/skills/
-    ├── superteam/
-    └── superteam-mcp-server/
+├── skills/                         # 镜像 t-rex/skills/
+│   ├── superteam/
+│   └── superteam-mcp-server/
+│
+└── scaffold/                       # 镜像 t-rex/scaffold/ — 基础设施 / lib
+    ├── trex-framework/
+    ├── trex-scaffold/
+    ├── knotify/
+    └── kseq/
 ```
 
-**clone 时建议用 GitLab URL path（display name 可能 rename 后与 path 不一致）**：
+**clone 用 GitLab URL path**（2026-05-14 起 backend-java 8 个仓的 URL path 已 rename 到 `trex-*`，与 display name 对齐 —— 历史 `drex-*` URL 由 GitLab redirect 短期仍可用，但推荐用新 path）：
 
 ```bash
 cd {your_workspace}/backend-java
-git clone git@gitlab.com:Keccak256-evg/t-rex/backend-java/drex-core.git trex-core
-# 注意：URL path 是 drex-core，但本地目录用 display name trex-core 更直观
+git clone git@gitlab.com:Keccak256-evg/t-rex/backend-java/trex-core.git
 ```
 
 `〔t-rex 现状〕`：历史仓库可能仍位于 sub-group 之外或 `gwave-dev` 之下，迁移按需推进，不强制立即归位。

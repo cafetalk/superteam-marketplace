@@ -12,7 +12,7 @@ t-rex 后端三种"对外暴露"形态并存：Dubbo（服务间）/ REST + Open
 - 接口及其参数 / 返回值的 POJO **必须可序列化**（实现 `Serializable` 或符合 Dubbo 默认序列化协议）
 - 接口方法不抛 checked exception；业务异常通过统一返回包装承载（见 `07-exception-and-logging.md`）
 
-**示例**（drex-core/core-api 已落地）：
+**示例**（trex-core/core-api 已落地）：
 ```java
 // xyz.trex.<project>.api.RemoteCampaignService
 public interface RemoteCampaignService {
@@ -46,11 +46,11 @@ public interface RemoteCampaignService {
 
 > 规则一句话：**业务一定写在 `*ApiDelegateImpl`，不写在生成产物里。**
 
-TODO(@allen)：OpenAPI 规范文件的存放位置 + 团队协作流程（PRD → schema → 生成）。
+`〔t-rex 现状〕`：**OpenAPI schema 文件由各仓自行约定位置**（通常在仓内 `src/main/resources/openapi/` 或 `openapi/` 顶层目录）；尚无 handbook 强制的统一路径。**协作流程**：PRD 定接口需求 → 开发者改 yaml + 提 MR → review 后构建期自动 generate Controller / Delegate → 业务在 `*ApiDelegateImpl` 落地。
 
 ## GraphQL（查询层）
 
-**用途**：drex-core 的 `core-graphql` 模块提供 GraphQL 查询入口，主要面向**复杂查询**场景（多表关联 / 嵌套字段 / 客户端按需取字段）。
+**用途**：trex-core 的 `core-graphql` 模块提供 GraphQL 查询入口，主要面向**复杂查询**场景（多表关联 / 嵌套字段 / 客户端按需取字段）。
 
 **技术栈**：
 - `spring-boot-starter-graphql`
@@ -75,7 +75,13 @@ TODO(@allen)：OpenAPI 规范文件的存放位置 + 团队协作流程（PRD �
 └── 否（仅供其他后端服务调用）           → Dubbo (Remote*Service)
 ```
 
-TODO(@allen)：跨服务事件 / 消息（MQ）的位置 — 何时用 MQ vs Dubbo？
+### MQ vs Dubbo 选型【强制】
+
+`〔t-rex 现状〕`：
+- **同步、强一致、调用即返回**（如查询、命令）→ **Dubbo (`Remote*Service`)**
+- **异步、解耦、削峰、最终一致**（如事件广播、批量任务触发、跨域通知）→ **RocketMQ (Aliyun ONS)**，通过 `kiki-ons-spring-boot-starter` 接入
+
+`trex-event` 服务承接 t-rex 主域的事件总线职责（含原 `anchor-event` 能力）；anchor 子域内部也走 RocketMQ。
 
 ## 维护
 

@@ -26,11 +26,12 @@ t-rex 后端存储栈与典型 Java 工程**有差异**：主存储是 NoSQL（A
 - 二级索引明确使用场景；不要"为查询而查询"地加索引
 - 写入走 `kiki-ots-spring-boot-starter` 提供的 client，不直接用 OTS SDK 裸调用
 
-TODO(@allen)：
-- 字段命名详细规约（时间字段类型 / 状态枚举存 int 还是 string / etc.）
-- 写入幂等保证
-- 范围扫描 / 分页规约
-- OTS 容量监控 / 成本规约
+**待 trex-core 主理人 + 团队定**（OTS 规约详细化）：
+
+- [ ] 字段命名详细规约（时间字段类型 / 状态枚举存 int 还是 string / etc.）
+- [ ] 写入幂等保证
+- [ ] 范围扫描 / 分页规约
+- [ ] OTS 容量监控 / 成本规约
 
 ## PostgreSQL（辅存储）
 
@@ -43,8 +44,8 @@ TODO(@allen)：
 - 表名 snake_case
 - 主键 `id BIGSERIAL`（或业务键时同时保留 surrogate id）
 - 索引必须有解释（在迁移脚本中写明）
-- ORM：MyBatis-Plus（参考 drex-core/core-graphql/mapper 现有实现）
-- 连接池：Druid 1.2.18（kiki-framework 默认配置）
+- ORM：MyBatis-Plus（参考 trex-core/core-graphql/mapper 现有实现）
+- 连接池：Druid 1.2.18（trex-framework 默认配置）
 
 **反例**：
 ```text
@@ -52,10 +53,11 @@ TODO(@allen)：
 ❌ 在 Service / Controller 里拼写大段 SQL 字符串绕过 Mapper / Wrapper 抽象 → 难以测试和审计
 ```
 
-TODO(@allen)：
-- PG 建表规约 / 字段命名
-- 索引规约
-- 慢查询治理
+**待 trex-core 主理人定**（PG 规约详细化）：
+
+- [ ] PG 建表规约 / 字段命名
+- [ ] 索引规约
+- [ ] 慢查询治理
 
 ## Redis（缓存）
 
@@ -63,28 +65,26 @@ TODO(@allen)：
 - 热数据缓存（用户身份、配置、白名单等）
 - 限流 / 防刷
 - 分布式锁
-- Session（drex-passport）
+- Session（trex-passport）
 
 **规约**【推荐】：
-- key 命名 `<project>:<domain>:<key>`，例 `drex:campaign:detail:<campaignId>`
+- key 命名 `<project>:<domain>:<key>`，例 `drex:campaign:detail:<campaignId>`（`〔t-rex 现状〕`：存量 key 用 `drex:` 前缀；新项目走 `trex:` 前缀）
 - TTL 必须明示，不允许永久缓存（除非业务确有需要）
 - 大 value 拆分（避免单 key > 10KB）
 - 通过 starter 抽象访问，不直接 raw Jedis / Lettuce
 
-TODO(@allen)：
-- 缓存一致性策略（旁路 / 双写 / 失效）
-- 限流 / 锁的统一封装位置
+`〔t-rex 现状〕`：
+- **缓存一致性策略**：采用旁路缓存 + TTL 兜底（业内默认）；强一致场景手动 `evict` / `update` 双写
+- **限流 / 锁的统一封装位置**：见 `kiki-redis-spring-boot-starter` 的 RedisTemplate 包装；专门的 sliding window 限流 helper 在 `drex-module-common`
 
 ## DB 迁移
 
-`〔t-rex 现状〕`：当前**没有 Flyway / Liquibase** —— DB 迁移是手动的（OTS 通过 SDK / 控制台；PG 通过 DBA 直接执行 SQL）。
+`〔t-rex 现状〕`：当前**没有 Flyway / Liquibase** —— DB 迁移是手动的（OTS 通过 SDK / 控制台；PG 通过 DBA 直接执行 SQL）。**不引入 Flyway**，与"PG 是辅存储"的定位匹配（PG 用量小，引入工具维护成本 > 收益）；若 PG 用量增长再重新评估。
 
 **反阿里推荐**：阿里手册推荐自动化迁移工具。
 
-TODO(@allen)：评估是否引入 Flyway（仅 PG）。OTS 的迁移流程独立规范。
-
 ## 维护
 
-- 新表创建必须同步更新数据字典 / ER 图（TODO(@allen)：位置？）
+- 新表创建必须同步更新数据字典 / ER 图（`〔t-rex 现状〕`：暂无中心位置，看各仓 `technical_design/` 目录）
 - 索引添加必须经评审
 - 跨存储双写场景必须明确一致性策略

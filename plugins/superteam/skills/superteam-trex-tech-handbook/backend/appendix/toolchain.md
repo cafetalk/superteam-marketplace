@@ -4,10 +4,10 @@
 
 | 工具 | 版本 | 说明 |
 |---|---|---|
-| **JDK** | 17 | t-rex 后端统一 JDK 版本（与 kiki-framework parent 对齐） |
+| **JDK** | 17 | t-rex 后端统一 JDK 版本（与 trex-framework parent 对齐） |
 | **Maven** | 3.6+ | 构建工具；各仓库附带 `mvnw` Wrapper，推荐用 wrapper |
 | **Git** | 2.x | 必装 |
-| **Docker** | 24+ | 本地启依赖（Redis / PG / Nacos）；TODO(@allen) docker-compose 模板 |
+| **Docker** | 24+ | 本地启依赖（Redis / PG / Nacos）；`〔t-rex 现状〕`暂无团队共享 docker-compose 模板，各自 spin up |
 
 ## 推荐
 
@@ -37,12 +37,14 @@
 ./mvnw dependency:tree
 ```
 
-## TODO(@allen)
+## 后续补充事项
+
+`〔t-rex 现状〕`：以下条目暂无团队共享版本，由开发者自行配置；若有人贡献模板会沉淀进本章：
 
 - 本地启依赖的 docker-compose 模板（Nacos + Redis + PG + Zipkin）
 - IDE 配置导出（code style / live templates / 编码 / 行尾）
-- Maven settings.xml 模板（私服仓库地址）
-- 调试 Dubbo 接口的本地技巧
+- Maven `settings.xml` 模板（Nexus 地址见 `common/06-development-flow.md` §3）
+- 调试 Dubbo 接口的本地技巧（dubbo-admin / telnet 调用）
 
 ## 维护
 

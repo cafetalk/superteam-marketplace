@@ -14,8 +14,8 @@ description: Use when querying the team knowledge base — semantic search over 
 - 文档元数据查询：查看已同步文档列表、同步状态
 
 ❌ 不负责：
-- 文档入库 / embedding 生成（由 superteam-superteam-store-kb-pgsql 处理）
-- 数据同步（由 superteam-superteam-sync-dingtalk-kb 等处理）
+- 文档入库 / embedding 生成（由 superteam-store-kb-pgsql 处理）
+- 数据同步（由 superteam-sync-dingtalk-kb 等处理）
 - 动态数据查询（由 superteam:source-* 处理）
 - 成员查询/解析/管理（由 `superteam-member` 处理）
 

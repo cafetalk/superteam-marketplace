@@ -90,12 +90,7 @@
 
 ### 归档位置
 
-TODO(@allen) — 归档机制候选：
-- Linear issue comment（推荐：与 issue 联动直观）
-- GitLab MR description 节
-- 钉钉文档 / 独立提测单文档
-
-定稿前都 paste 在 Linear comment（不会丢）。
+`〔t-rex 现状〕`：**统一 paste 在 Linear issue comment**（与 issue 联动直观、不会丢、可追溯）。GitLab MR description / 钉钉文档作辅助，不作主归档；中心化提测单文档暂不建（开销 > 收益）。
 
 ## bug 回流 SOP【强制】
 
@@ -167,13 +162,14 @@ TODO(@allen) — 归档机制候选：
 ❌ 跳过 review_*，直接 dev_*_xxx 整合到 beta_*       → 失去 team lead 审核环节
 ```
 
-## TODO(@allen)
+## 后续补充事项
 
-- 提测单归档机制（Linear comment / MR description / 钉钉文档？）
-- bug 回流 + 重新提测时是否复用同一 review_* 还是建新 review_<date>_<name+v2>
-- 多人协作时的 commit 协同偏好（rebase / merge / cherry-pick）
-- QA 接收提测通知的机制（自动 / 人工 trigger）
-- review_<date>_<name> 在 MR 创建时自动从哪个 base 切出来（master tip？长期 dev tip？）
+`〔t-rex 现状〕`：以下细节仍在团队实践中沉淀，handbook 暂不立硬约束 —— 各自按当前共识执行，若分歧累积再回到本章统一：
+
+- **bug 回流 + 重新提测**：通常复用同一 `review_<date>_<name>`（commit 累积）；只有当 base 漂移很远 / review 历史污染严重时才另起 `+v2`
+- **多人协作 commit 协同**：默认 `merge`（保留历史），cherry-pick 仅用于 hotfix 跨分支
+- **QA 接收提测通知**：暂无自动 trigger；提测人主动在 Linear comment + 群里 @ QA
+- **`review_<date>_<name>` base**：默认从 `master` tip 切（保证最新）；长期 feature 例外
 
 ## 维护
 

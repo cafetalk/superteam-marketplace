@@ -1,6 +1,8 @@
 ---
 name: superteam-trex-tech-handbook
 description: Use when starting any t-rex ecosystem work that is NOT inside the superteam sub-project — loads architecture, microservice catalog, coding standards, branch/commit rules, test handoff SOP for t-rex backend (and placeholder frontend) development.
+version: 1.2.0
+last_reviewed: 2026-05-15
 ---
 
 # t-rex Tech Handbook
@@ -33,7 +35,7 @@ Development context pack for the **t-rex ecosystem** (excluding the `superteam` 
 ### Backend (Java)
 - [`backend/00-overview.md`](backend/00-overview.md)
 - [`backend/01-microservices.md`](backend/01-microservices.md) — ~10 microservice catalog
-- [`backend/02-architecture.md`](backend/02-architecture.md) — kiki-framework + evg-scaffold
+- [`backend/02-architecture.md`](backend/02-architecture.md) — trex-framework + trex-scaffold
 - [`backend/03-module-design.md`](backend/03-module-design.md) — Gateway vs Dubbo domain service
 - [`backend/04-coding-standards.md`](backend/04-coding-standards.md) — package naming (xyz.trex / com.drex) + class suffixes
 - [`backend/05-rpc-and-api.md`](backend/05-rpc-and-api.md)
@@ -57,5 +59,5 @@ Every chapter uses 阿里巴巴 Java 开发手册 style:
 
 ## Status
 
-M1 (this delivery): framework + known content + TODO placeholders.
-See `docs/skills-design/2026-05-11-trex-tech-handbook.md` for full design and roadmap.
+M1.5 (in progress): framework + 22-project current-state catalog + sub-group restructure (incl. `scaffold/`).
+Roadmap and open items: `docs/skills-design/2026-05-11-trex-tech-handbook.md`.

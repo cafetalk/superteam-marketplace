@@ -138,6 +138,6 @@ t-rex 后端跑在 **阿里云 K8s** 上，三套环境，对应三个长期分�
 
 ## 状态
 
-M1（首发）：框架骨架 + 已知现状占位 + `TODO(@allen)` 待补条目。
+M1.5（dev 中）：框架骨架 + 22 项目业务范围现状记录 + sub-group 重组（含 `scaffold/`）；待补内容跟踪在 `docs/adr/`（决策类）与本 handbook 章末 `## 维护` 段（运行类）。
 
 `〔t-rex 现状〕`：本 handbook 不覆盖 `superteam` 子项目；它有独立的 `CLAUDE.md` + 一套不同的约定（Python + skills 架构）。

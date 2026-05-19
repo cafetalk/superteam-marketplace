@@ -27,7 +27,7 @@ description: 使用 Linear 的迭代(Cycle)数据为 workspace 内所有 Team �
 
 ### 发布到钉钉文档（默认自动）
 
-根目录 nodeId 与 `weekly-report` 一致（`skills/weekly-report/scripts/generate_report.py` 中的 `REPORT_FOLDER_ID`，团队周报与个人周报共用同一钉钉父文件夹）。**团队周报**在上传前会在该父目录下解析或创建 `YYYY/YYWww` 层级目录（例如 `2026-W15` → `2026/26W15`），若已存在同名目录则直接写入其中。
+根目录 nodeId 与 `superteam-report` 一致（`skills/superteam-report/scripts/generate_report.py` 中的 `REPORT_FOLDER_ID`，团队周报与个人周报共用同一钉钉父文件夹）。**团队周报**在上传前会在该父目录下解析或创建 `YYYY/YYWww` 层级目录（例如 `2026-W15` → `2026/26W15`），若已存在同名目录则直接写入其中。
 
 - **钉钉 MCP URL**：优先读 `DINGTALK_MCP_URL`（`~/.superteam/config` 或环境变量）；未设置时会尝试从 **`~/.cursor/mcp.json`** 中解析带 `dingtalk` 的 HTTP MCP 地址（兼容误嵌套的 `mcpServers` 结构），与你在 Cursor 里配置的钉钉文档 MCP 一致。**配置解析成功后，写盘会先 `list_nodes` / 必要时 `create_folder` 再 `create_document` 上传**（钉钉内文档名：`<ISO周>-团队周报.md`）。若本机 Python 报 **SSL 证书校验失败**，可安装 `certifi`（脚本在已安装时会用其 CA 包访问 `mcp-gw.dingtalk.com`）。
 - **`DINGTALK_REPORT_FOLDER_ID`**（可选）：覆盖**父**文件夹 nodeId；不设则使用内置默认值。

@@ -73,13 +73,17 @@
   - Lombok
   - **p3c-pmd**（阿里 Java 编码规约自动检查）
 - [ ] 仓库 clone 到 `{your_workspace}/backend-java/<repo-name>/`（见 `common/01`）
-- [ ] `~/.m2/settings.xml` 配置内部 Nexus / Aliyun Maven 仓库地址（TODO(@allen): 公布地址）
-- [ ] Nacos 本地 namespace 申请 / `bootstrap.properties` 配置
-- [ ] 本地 OTS / PG / Redis 桩 —— TODO(@allen): docker-compose 模板
+- [ ] **`~/.m2/settings.xml`** 配置内部 Nexus，**地址唯一**：
+  ```
+  http://nexus-svc.kube-public.svc.kiki.local:8081
+  ```
+  `〔t-rex 现状〕` 每个环境有独立 runner，分支对应环境就在该 runner 上运行 —— URL 不按环境切换，所有项目共用这一条
+- [ ] **Nacos**：托管在阿里云。访问需先取得阿里云控制台权限（找 ops / 团队 admin 开通）；本地 namespace 申请 + `bootstrap.properties` 配置参考已有微服务模板（如 `trex-core` / `trex-passport` 的 `src/main/resources/`）
+- [ ] **本地 OTS / PG / Redis 桩** —— `〔t-rex 现状〕`：暂无团队共享 docker-compose 模板，各自 spin up；未来若有人贡献模板，落地到 `backend/appendix/toolchain.md`
 - [ ] GitLab SSH key 已加（远端 push 用 SSH）
 - [ ] 已读 `common/02` 分支 + commit 规约（必须 dogfood）
 
-环境准备**一次性投入**，工具链版本由 `kiki-framework` parent POM 锁定。
+环境准备**一次性投入**，工具链版本由 [`trex-framework`](https://gitlab.com/Keccak256-evg/t-rex/scaffold/trex-framework) parent POM 锁定。
 
 ---
 
@@ -215,7 +219,8 @@ Linear issue 状态流转（见 `common/05` §状态流转）：
 
 ## 调试技巧
 
-TODO(@allen)：
+`〔t-rex 现状〕`：以下调试场景暂无团队共享 howto，开发者自行积累；有人贡献到 `backend/appendix/toolchain.md` 时再沉淀：
+
 - 远程 Dubbo 接口本地调试（dubbo-admin / telnet 调用）
 - OTS 数据查询（Aliyun 控制台 / SDK debug 工具）
 - Nacos 配置切换（本地 override 流程）

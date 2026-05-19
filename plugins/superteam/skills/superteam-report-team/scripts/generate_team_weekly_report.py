@@ -37,7 +37,7 @@ if _sys_path_shared not in sys.path:
 from config import dingtalk_mcp_url, env  # noqa: E402
 from db import list_members  # noqa: E402  # type: ignore[reportMissingImports]
 
-# 与 skills/weekly-report/scripts/generate_report.py 一致：团队周报发布到同一钉钉文档目录。
+# 与 skills/superteam-report/scripts/generate_report.py 一致：团队周报发布到同一钉钉文档目录。
 REPORT_FOLDER_URL = (
     "https://alidocs.dingtalk.com/i/nodes/AR4GpnMqJzMM2vo3fqv3bQ7bVKe0xjE3?utm_scene=team_space"
 )

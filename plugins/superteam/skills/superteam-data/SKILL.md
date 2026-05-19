@@ -11,7 +11,7 @@ description: Use when querying live product/business data via Superteam MCP agen
 
 - **适用**：活动 / campaign、投放方 advertiser、**产品内** Quest 配置（`list_tasks` / `get_task`，与研发排期无关）、anchor / badge、provider、条件模板、alpha 用户、项目与全局配置等 **线上业务数据**。
 - **不适用**：**Linear工单、研发迭代/Story、团队「任务谁做了多少」** — 请用 **`superteam-linear`**（`query_linear.py`）或知识库文档（`superteam-knowledgebase`）。
-- **不适用**：钉钉多维表里的迭代/需求排期（`superteam-superteam-sync-task-data`落库）— 本 skill **不**查 AGE/本地任务图；若需查库请直接 SQL 或其它专用流程。
+- **不适用**：钉钉多维表里的迭代/需求排期（`superteam-sync-task-data`落库）— 本 skill **不**查 AGE/本地任务图；若需查库请直接 SQL 或其它专用流程。
 - **不适用**：团队知识库文档检索 — 请用 `superteam-knowledgebase`。
 
 ## 调用方式

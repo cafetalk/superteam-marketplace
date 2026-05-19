@@ -1,20 +1,24 @@
 # 后端微服务清单 ⭐
 
-t-rex 后端 GitLab 共 **22 个项目**，分 3 个 sub-group：
+t-rex 后端 GitLab 共 **22 个微服务 + 4 个基础设施**，分 4 个 sub-group：
 
-| Sub-group | 数量 | 路径 |
-|---|---|---|
-| **`backend-java/`** | 6 | https://gitlab.com/Keccak256-evg/t-rex/backend-java |
-| **`backend-python/`** | 3 | https://gitlab.com/Keccak256-evg/t-rex/backend-python |
-| **`anchor/`** | 13 | https://gitlab.com/Keccak256-evg/t-rex/anchor |
+| Sub-group | 数量 | 类型 | 路径 |
+|---|---|---|---|
+| **`backend-java/`** | 6 | 微服务 | https://gitlab.com/Keccak256-evg/t-rex/backend-java |
+| **`backend-python/`** | 3 | 微服务 | https://gitlab.com/Keccak256-evg/t-rex/backend-python |
+| **`anchor/`** | 13 | 微服务（混栈）| https://gitlab.com/Keccak256-evg/t-rex/anchor |
+| **`scaffold/`** | 4 | 基础设施 / lib | https://gitlab.com/Keccak256-evg/t-rex/scaffold |
 
-`〔t-rex 现状〕`：本 handbook 当前的 `backend/` 章主体（02–10）针对 **Java 后端**（kiki-framework 体系）。Python 后端规约 + anchor 子领域规约**待补**（M3+），先把清单列全。
+`〔t-rex 现状〕`：本 handbook 当前的 `backend/` 章主体（02–10）针对 **Java 后端**（trex-framework 体系）。Python 后端规约 + anchor 子领域规约**待补**（M3+），先把清单列全。
 
 ## 命名约定观察
 
-22 个项目里，GitLab **display name 已全部 rename 到 `trex-*` / `anchor-*` 前缀**，但 **URL path（仓库路径）保留了原始名字**（部分仍是 `drex-*` / `hexagonal` 等）。点击下面 URL 才是真实仓地址。
+display name 已统一到 `trex-*` / `anchor-*` 前缀。2026-05-14（TREX-449）把后端 **8 个 URL path 也全部 rename 对齐到 display name**（详见 [`docs/ops/2026-05-14-path-rename-log.md`](../../docs/ops/2026-05-14-path-rename-log.md)）。
 
-TODO(@allen)：是否启动一次 GitLab path rename，把 path 与 display name 对齐（避免 SSH clone URL 与 display 不一致引起混淆）。
+**仍未对齐的**：
+- `trex-tls/` 下 3 个 path/display 不一致项 —— display 本身可疑，等 owner review 后单独处理
+
+存量旧 path 通过 GitLab redirect 短期仍可 fetch，但 CI / 本地 clones / 文档应该用新 path。
 
 ## 服务条目模板
 
@@ -27,81 +31,78 @@ TODO(@allen)：是否启动一次 GitLab path rename，把 path 与 display name
 - **stack**：Java / Python / Node / Foundry / 混栈
 - **多模块结构**：[列出 module]
 - **上游 / 下游**：调用方 / 被调
-- **负责人**：@<lead>
 - **最近更新**：YYYY-MM-DD
 ```
 
+`〔t-rex 现状〕` **不收录 owner / 负责人字段** —— AI 编码时代，AI agent 读完整 handbook + 代码即可 onboard，代码所有权的人工权重下降。具体业务问题走 Linear / 群求助，不依赖文档"找人"。
+
 ---
 
-## A. `backend-java/` — Java 微服务（kiki-framework 体系）
+## A. `backend-java/` — Java 微服务（trex-framework 体系）
 
 ### trex-core
 - **业务范围**：广告主 / Campaign / Onboarding 等核心领域服务（含 GraphQL 查询层）
 - **技术形态**：**Dubbo 领域服务**（按技术分层）
-- **GitLab URL**：https://gitlab.com/Keccak256-evg/t-rex/backend-java/drex-core
+- **GitLab URL**：https://gitlab.com/Keccak256-evg/t-rex/backend-java/trex-core
 - **本地路径建议**：`{your_workspace}/backend-java/trex-core/`
 - **stack**：Java 17 / Spring Boot / Dubbo / MyBatis-Plus / OTS / PostgreSQL / GraphQL（`spring-boot-starter-graphql` + `graphql-java-extended-scalars 22.0`）
 - **多模块结构**：`core-api / core-dal / core-graphql / core-model / core-service / core-web`
 - **上游**：trex-web（BFF）；其他领域服务的 Dubbo client
 - **下游**：trex-passport；OTS（主）；PostgreSQL（辅）；Redis；Nacos
-- **负责人**：TODO(@allen)
 - **最近更新**：2026-05-13
 
 ### trex-passport
 - **业务范围**：用户身份 / 社交平台集成 / 登录 / 签名验证 / Session
 - **技术形态**：**Dubbo 领域服务**
-- **GitLab URL**：https://gitlab.com/Keccak256-evg/t-rex/backend-java/drex-passport
+- **GitLab URL**：https://gitlab.com/Keccak256-evg/t-rex/backend-java/trex-passport
 - **本地路径建议**：`{your_workspace}/backend-java/trex-passport/`
-- **stack**：Java 17 / Spring Boot / kiki-framework / MyBatis-Plus
-- **多模块结构**：`customer-api / customer-dal / customer-model / customer-service / customer-web`（注意：模块名 `customer-*` 而非 `passport-*`）
+- **stack**：Java 17 / Spring Boot / trex-framework / MyBatis-Plus
+- **多模块结构**：`drex-passport-api / drex-passport-dal / drex-passport-model / drex-passport-service / drex-passport-web`（**模块名仍 `drex-passport-*`**；2026-05-14 GitLab path rename 到 `trex-passport` 时未跟改模块名 —— 2026-05-19 audit 校准。POM 内部还引用了历史 `kcustomer-api` 模块作为依赖）
 - **上游**：trex-web；其他需鉴权 / 用户信息的领域服务
-- **下游**：TODO(@allen)
-- **负责人**：TODO(@allen)
+- **下游**：OTS / PostgreSQL / Redis / Nacos（与 trex-core 同套基础设施）
 - **最近更新**：2026-05-13
-- `〔note〕` `trex-passport`（Java backend）与历史 Rust/Foundry `trex-passport`、`anchor-labs`、`anchor-insight-zktls` 容易混淆 —— 当前 `backend-java/drex-passport` 是 Java 版本
+- `〔note〕` `trex-passport`（Java backend）与历史 Rust/Foundry `trex-passport`、`anchor-labs`、`anchor-insight-zktls` 容易混淆 —— 当前 `backend-java/trex-passport` 是 Java 版本（path 已在 2026-05-14 由 `drex-passport` rename 到 `trex-passport`，见 `docs/ops/2026-05-14-path-rename-log.md`）
 
 ### trex-web
 - **业务范围**：对外 API / BFF —— 聚合下游 Dubbo 领域服务，给前端 / 项目方 Portal 用
 - **技术形态**：**Gateway**（按业务领域分模块）
 - **GitLab URL**：https://gitlab.com/Keccak256-evg/t-rex/backend-java/trex-web
 - **本地路径建议**：`{your_workspace}/backend-java/trex-web/`
-- **stack**：Java 17 / Spring Boot / kiki-framework / OpenAPI 2.0.2 / Aliyun OSS SDK 3.18.1
-- **多模块结构**：`drex-module-activity / drex-module-common / drex-module-core / drex-module-customer / drex-web-start`（注意：M1 时见到的 `drex-module-growth` 在最新 master 已不在，可能合并 / 重命名）
+- **stack**：Java 17 / Spring Boot / trex-framework / OpenAPI 2.0.2 / Aliyun OSS SDK 3.18.1
+- **多模块结构**：`drex-module-activity / drex-module-common / drex-module-core / drex-module-customer / drex-module-onboarding / drex-web-start`（2026-05-19 audit 校准；M1 时见过的 `drex-module-growth` 在 master 已不在，可能合并 / 重命名）
 - **上游**：前端 / 项目方 Portal（HTTP REST）
 - **下游**：trex-core, trex-passport, trex-endpoint, trex-event 等 Dubbo 服务；Nacos；Zipkin
-- **负责人**：TODO(@allen)
 - **最近更新**：2026-05-13
 
 ### trex-endpoint
-- **业务范围**：TODO(@allen) —— GitLab description 为空；从模块名推测是某种"端点 / 接入"服务
+- **业务范围**：`〔t-rex 现状〕`GitLab description 为空；从模块名（`drex-endpoint-*`）推测为对外端点 / 接入服务（已接管 `anchor-endpoint` 的能力）—— 待 owner 在 GitLab description 补充权威定义
 - **技术形态**：**Dubbo 领域服务**（按技术分层）
-- **GitLab URL**：https://gitlab.com/Keccak256-evg/t-rex/backend-java/drex-endpoint
+- **GitLab URL**：https://gitlab.com/Keccak256-evg/t-rex/backend-java/trex-endpoint
 - **本地路径建议**：`{your_workspace}/backend-java/trex-endpoint/`
-- **stack**：Java 17 / Spring Boot / kiki-framework
+- **stack**：Java 17 / Spring Boot / trex-framework
 - **多模块结构**：`drex-endpoint-api / drex-endpoint-dal / drex-endpoint-service / drex-endpoint-web`
-- **上游 / 下游**：TODO(@allen)
-- **负责人**：TODO(@allen)
 - **最近更新**：2026-05-13
 
 ### trex-event
-- **业务范围**：TODO(@allen) —— 推测是事件 / 消息总线类服务
-- **技术形态**：TODO（master 当前空，内容应在 worktree / 分支中）
-- **GitLab URL**：https://gitlab.com/Keccak256-evg/t-rex/backend-java/drex-event
+- **业务范围**：事件 / 消息总线服务（含 anchor-event 能力迁移过来）
+- **技术形态**：**Dubbo 领域服务**
+- **GitLab URL**：https://gitlab.com/Keccak256-evg/t-rex/backend-java/trex-event
 - **本地路径建议**：`{your_workspace}/backend-java/trex-event/`
-- **stack**：Java（推测）
-- **多模块结构**：TODO（master 暂无 pom.xml）
-- **负责人**：TODO(@allen)
-- **最近更新**：2026-05-13
+- **stack**：Java / Spring Boot / trex-framework
+- **多模块结构**：`drex-event-server`（单模块；master 有完整 pom.xml + 代码）
+- **最近更新**：2026-05-15
 
 ### trex-admin
 - **业务范围**：运营 / admin 面板 BFF
-- **技术形态**：GraphQL BFF（M1 时观察到 pom.xml 嵌在 `.worktrees/reborn/`，疑似在重构）
+- **技术形态**：GraphQL BFF
 - **GitLab URL**：https://gitlab.com/Keccak256-evg/t-rex/backend-java/trex-admin
 - **本地路径建议**：`{your_workspace}/backend-java/trex-admin/`
-- **stack**：Java + GraphQL（推测）
-- **多模块结构**：TODO（master 当前空）
-- **负责人**：TODO(@allen)
-- **最近更新**：2026-05-12
+- **stack**：Java / Spring Boot / GraphQL / trex-framework
+- **多模块结构**：`trex-admin-common / trex-admin-dal / trex-admin-graphql / trex-admin-security / trex-admin-start`
+- **最近更新**：2026-05-15（重构 reborn 已合主干，master 已 populated 含 5 模块 + `technical_design/`）
+- `〔reborn 期内未完成项〕`（2026-05-19 audit 发现）：
+  - **`kiki-observability-tracing-spring-boot-starter` 未接入** —— 其他 backend-java 仓全部接入，trex-admin 是唯一例外
+  - **`ops/gitlab-cis/gwave-dev/` 内无对应 CI yaml** —— 其他 5 个 backend 服务都有 `drex-*.yaml`
 
 ---
 
@@ -109,35 +110,29 @@ TODO(@allen)：是否启动一次 GitLab path rename，把 path 与 display name
 
 ### trex-hexagonal
 - **业务范围**：AI agent 平台 —— 统一 API / RAG / 特征存储 / 异步任务编排（生产级）
-- **技术形态**：Python FastAPI service + Celery worker + 多组件
-- **GitLab URL**：https://gitlab.com/Keccak256-evg/t-rex/backend-python/hexagonal
+- **技术形态**：Python FastAPI service + Celery worker + Streamlit UI + 多组件
+- **GitLab URL**：https://gitlab.com/Keccak256-evg/t-rex/backend-python/trex-hexagonal
 - **本地路径建议**：`{your_workspace}/backend-python/trex-hexagonal/`
-- **stack**：Python 3.11 / FastAPI / LangGraph / Celery / Feast / PostgreSQL / Redis / Docker Compose
-- **多模块结构**：TODO（master 当前空 —— 本地 clone 有完整内容，可能在 dev 分支）
-- **上游 / 下游**：TODO(@allen)
-- **负责人**：TODO(@allen)
-- **最近更新**：2026-05-13
+- **stack**：Python / FastAPI / LangGraph / Celery / Feast / PostgreSQL / Redis / Streamlit / Docker Compose
+- **多模块结构**：`app/` / `ui/` / `feature_store/` / `tests/` / `scripts/` / `data/` / `docs/` + `docker-compose.yml` + `Dockerfile`（master 27 entries 完整 populated）
+- **最近更新**：2026-05-15（master 已初始化完成）
 
 ### trex-persona-feast
 - **业务范围**：persona 特征工程 + 特征存储（Feast）
 - **技术形态**：Python multi-module
-- **GitLab URL**：https://gitlab.com/Keccak256-evg/t-rex/backend-python/persona-feast
+- **GitLab URL**：https://gitlab.com/Keccak256-evg/t-rex/backend-python/trex-persona-feast
 - **本地路径建议**：`{your_workspace}/backend-python/trex-persona-feast/`
 - **stack**：Python / Feast / requirements.txt
 - **多模块结构**：`feature_repo / persona-web / technical_design`
-- **上游 / 下游**：TODO(@allen)
-- **负责人**：TODO(@allen)
 - **最近更新**：2026-05-13
 
 ### trex-prism-engine
-- **业务范围**：TODO(@allen) —— 推测是收益 / yield 计算引擎（URL path 是 `yield-engine`）
+- **业务范围**：`〔t-rex 现状〕`URL path 历史曾为 `yield-engine`，2026-05-14 已 rename 到 `trex-prism-engine`；从历史命名推测为收益 / yield 计算引擎，待 owner 补充权威定义
 - **技术形态**：Python service + web
-- **GitLab URL**：https://gitlab.com/Keccak256-evg/t-rex/backend-python/yield-engine
+- **GitLab URL**：https://gitlab.com/Keccak256-evg/t-rex/backend-python/trex-prism-engine
 - **本地路径建议**：`{your_workspace}/backend-python/trex-prism-engine/`
 - **stack**：Python / requirements.txt
 - **多模块结构**：`service / web`
-- **上游 / 下游**：TODO(@allen)
-- **负责人**：TODO(@allen)
 - **最近更新**：2026-05-13
 
 `〔Python 后端规约缺失〕` 本 handbook 当前 `backend/` 章主体面向 Java；Python 后端的脚手架、依赖管理、测试、日志、可观测性规约**待补 M3+**。建议立项 `backend-python/` 一级目录或独立 sub-handbook。
@@ -146,7 +141,7 @@ TODO(@allen)：是否启动一次 GitLab path rename，把 path 与 display name
 
 ## C. `anchor/` — anchor 子领域（13 项 混栈）
 
-`〔t-rex 现状〕`：**anchor 是 t-rex 的子领域**（具体业务定位 TODO(@allen)：链上洞察 / 第三方数据接入 / Token NFT 分析？）；自成 13 个仓的独立产品线，含 Java 后端、Node/TS、Foundry 智能合约多栈。
+`〔t-rex 现状〕`：**anchor 是 t-rex 的子领域** —— 自成 13 个仓的独立产品线，含 Java 后端、Node/TS、Foundry 智能合约多栈。从仓名/模块名推断业务覆盖链上洞察（`anchor-insight-*`）、NFT、Token、第三方数据、zkTLS、智能合约（`anchor-labs`）；anchor 子域的精确业务边界 / 与 trex 主域接口由 anchor team owner 维护，本 handbook 仅从工程视角列清单。
 
 ### C.1 anchor Java 后端（8 项）
 
@@ -161,8 +156,9 @@ TODO(@allen)：是否启动一次 GitLab path rename，把 path 与 display name
 | **anchor-team** | `anchor/anchor-team` | `anchor-team-api/dal/model/server/web` | 团队 / 用户域 | 2026-04-13 |
 | **anchor-web** | `anchor/anchor-web` | `anchor-web-api/common/service`（含 Dockerfile + monitoring） | Gateway / BFF | 2026-05-11 |
 
-TODO(@allen)：每个项目业务范围 / 上下游 / 负责人补全。
-TODO(@allen)：`anchor-endpoint`、`anchor-event` 已停用并迁移到 `trex-endpoint`、`trex-event`，后续确认仓库归档策略（保留只读 / 标记 archived / 文档跳转说明）。
+`〔t-rex 现状〕`：anchor 各项目的业务范围 / 上下游由 anchor team owner 在 GitLab description 维护，本 handbook 不在此重述。
+
+`〔已停用容器 archive 策略待立〕`：`anchor-endpoint` / `anchor-event` 已停用并迁移到 `trex-endpoint` / `trex-event`；仓库保留只读 / 标记 archived / 文档跳转的选择 —— 待 ops 主理人 + anchor team 共同定。
 
 ### C.2 anchor 前端 / Node 工具（3 项）
 
@@ -185,24 +181,47 @@ TODO(@allen)：智能合约 + zkTLS 类项目在本 handbook 是否独立成章�
 
 ---
 
+## D. `scaffold/` — 基础设施 / lib（4 项）
+
+`〔t-rex 现状〕`：2026-05-19 新建的 sub-group，把历史散在 `gwave-dev/` 下的工程脚手架 + 公共 lib 集中归到 `t-rex/scaffold/`。**不是微服务**，是 t-rex 后端工程的共同支撑。
+
+| 项目 | URL path | 类型 | 来源 / 关系 | 最近 |
+|---|---|---|---|---|
+| **trex-framework** | `scaffold/trex-framework` | parent POM + runtime starters | **替代** `gwave-dev/kiki-framework`（已 fork 过来）—— 新工程统一继承本仓 | 2026-05-19 |
+| **trex-scaffold** | `scaffold/trex-scaffold` | 新建工程生成器 | **替代** `gwave-dev/evg-scaffold`（已 transfer + rename） | 2026-05-19 |
+| **knotify** | `scaffold/knotify` | 通知 lib | fork from `gwave-dev/knotify`；⚠️ 即将下沉到 `backend-java/trex-widget` | 2026-05-19 |
+| **kseq** | `scaffold/kseq` | 序列 lib | fork from `gwave-dev/kseq`；⚠️ 即将下沉到 `backend-java/trex-widget` | 2026-05-19 |
+
+### 关键约定【强制】
+
+- **新工程必须继承 `trex-framework` parent POM**（取代 `kiki-framework`，详见 `02-architecture.md`）
+- **新工程推荐用 `trex-scaffold` 生成**（取代 `evg-scaffold`）
+- **`knotify` / `kseq` 处于过渡期**：现存依赖可继续用；新代码不要新引入 —— 团队规划把这两个 + `kurl` 合并下沉到一个新的 `trex-widget` 服务（落 `backend-java/`，未来追加）
+
+### 与 `gwave-dev/` 老仓的关系
+
+- `gwave-dev/kiki-framework`、`gwave-dev/knotify`、`gwave-dev/kseq` 物理仍存在但**视为 deprecated**，禁止新工程引用
+- `gwave-dev/evg-scaffold` 已 transfer 到 `t-rex/scaffold/trex-scaffold`，旧 URL GitLab redirect
+
+---
+
 ## 全局视图
 
 ```text
-                        t-rex 后端生态 (22 项)
+                  t-rex 后端生态 (22 微服务 + 4 基础设施)
                               │
-        ┌─────────────────────┼─────────────────────┐
-        │                     │                     │
-   backend-java/        backend-python/         anchor/
-    (Java 6)            (Python 3)           (13 项 混栈)
-        │                     │                     │
-   trex-core           trex-hexagonal          ┌────┴────┐
-   trex-passport       trex-persona-feast      │         │
-   trex-web            trex-prism-engine     Java     非 Java
-   trex-endpoint                              (8 项)   (5 项)
-   trex-event                                          │
-   trex-admin                                  ┌──────┴──────┐
-                                              Node          Foundry
-                                              (3 项)        (2 项)
+        ┌──────────────┬──────┴───────┬────────────────┐
+        │              │              │                │
+   backend-java/  backend-python/  anchor/         scaffold/
+    (Java 6)      (Python 3)    (13 混栈)       (基础设施 4)
+        │              │              │                │
+   trex-core      trex-hexagonal   ┌──┴──┐        trex-framework
+   trex-passport  trex-persona-     Java 非 Java   trex-scaffold
+   trex-web        feast            (8)  (5)       knotify ⚠️
+   trex-endpoint  trex-prism-                      kseq ⚠️
+   trex-event      engine                          ↘ 计划合入
+   trex-admin                                       backend-java/
+                                                    trex-widget
 ```
 
 ## 服务关系图（粗略）
@@ -226,9 +245,12 @@ TODO(@allen)：补一张完整上下游关系图（mermaid / ASCII）。当前�
 
 ## TODO(@allen) 汇总
 
-- [ ] 22 个项目业务范围 + 上下游 + 负责人逐一补全
-- [ ] `trex-admin / trex-event / trex-hexagonal` 的 master 为空 —— 默认分支调整 / 内容补齐 / 或确认在 dev 分支开发
-- [ ] **GitLab path rename**：display name 已 `trex-*` / `anchor-*` 但 URL path 仍是 `drex-*` / 等历史名 —— 是否启动批量 rename
+- [ ] 22 个项目业务范围 + 上下游逐一补全
+- [x] ~~`trex-admin / trex-event / trex-hexagonal` master 为空~~ ✅ 2026-05-15 全部解决：
+  - `trex-admin`: 重构 reborn 已合主干，master 5 模块齐全
+  - `trex-event`: master 一直有 `drex-event-server` 模块（之前误报）
+  - `trex-hexagonal`: master 27 entries 已 populated（含 app/ ui/ feature_store/ + docker-compose）
+- [x] ~~**GitLab path rename**~~ ✅ 已完成 (TREX-449, 2026-05-14)：display name 已 `trex-*` / `anchor-*`，URL path 也对齐到 display
 - [ ] **anchor 子领域定位**：业务范围 / 与 t-rex 主域边界 / 数据流向
 - [ ] Python 后端规约章（M3+ 立项）
 - [ ] 智能合约 / zkTLS / SDK 类项目是否独立规约
@@ -237,5 +259,5 @@ TODO(@allen)：补一张完整上下游关系图（mermaid / ASCII）。当前�
 ## 维护
 
 - 新增 / 重命名 / 迁移项目需同步更新本章 + GitLab description
-- 服务条目变更（业务范围 / 主理人 / 仓库迁移）需同步本章
+- 服务条目变更（业务范围 / 仓库迁移）需同步本章
 - sub-group 调整需同步更新 `common/01-gitlab-and-workspace.md`

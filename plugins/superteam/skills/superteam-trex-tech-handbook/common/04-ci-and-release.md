@@ -15,8 +15,8 @@ t-rex 所有项目的 CI 流水线规则**中心化托管**在外部仓，本仓
     │    file: 'gwave-dev/<project>.yaml'
     ▼
 ops/gitlab-cis 仓 master 分支
-└── gwave-dev/
-    ├── drex-core.yaml
+└── gwave-dev/                # `〔t-rex 现状〕`：ops 仓内部目录名仍是历史 `gwave-dev/`（未跟 sub-group rename）
+    ├── drex-core.yaml        # `〔t-rex 现状〕`：ops 内 yaml 文件名仍是历史 `drex-*`（虽然 GitLab path 已 rename 到 trex-core）
     ├── trex-web.yaml
     └── <project>.yaml
 ```
@@ -142,9 +142,7 @@ t-rex 后端 prod 发布**必须灰度**，不允许全量直发（仅 P0 hotfix
 **每阶段观察时长**：≥ 5 分钟（看错误率 + 业务指标曲线）。
 **任一阶段触发回滚条件**（见下方 §回滚 SOP）则立刻停止并回滚。
 
-TODO(@allen)：
-- 灰度切流量的具体工具（Nacos / 网关 / k8s rolling）
-- 各服务的灰度配置位置（Nacos namespace / key 模板）
+`〔运维相关，见 ops runbook〕`：灰度切流量工具（Nacos / 网关 / k8s rolling）+ 各服务灰度配置位置（Nacos namespace / key 模板）由 ops 维护；handbook 只保留触发条件 + 流程 SOP。
 
 ## 发布窗口【推荐】
 
@@ -187,9 +185,9 @@ TODO(@allen)：
 
 **任一**满足立刻回滚：
 
-- **错误率** > 阈值（TODO(@allen)：定具体阈值，建议 5xx > 0.5%）
-- **P99 延迟** > 阈值（TODO(@allen)：定阈值，建议环比 +30%）
-- **业务指标** 异常下降（订单 / 注册 / 用户活跃，TODO 定义）
+- **错误率** > 阈值（具体阈值见 ops 监控配置；参考起点：5xx > 0.5%）
+- **P99 延迟** > 阈值（参考起点：环比 +30%）
+- **业务指标** 异常下降（订单 / 注册 / 用户活跃 —— 具体指标定义见 ops runbook / 业务监控配置）
 - **大量用户反馈**（客服 / 内部使用方告知）
 - **on-call 主观判断**
 
@@ -224,7 +222,7 @@ TODO(@allen)：
 [8]    复盘（事后 24h 内 RCA 文档 + Linear comment）
 ```
 
-具体可执行命令 / Nacos 切流量手册 TODO(@allen)（与 ops 对齐后定稿）。
+`〔运维相关，见 ops runbook〕`：具体可执行命令 / Nacos 切流量手册由 ops 维护。
 
 ### 回滚反例【强制规避】
 
@@ -237,9 +235,9 @@ TODO(@allen)：
 
 ## 值班 / On-call【推荐】
 
-- **轮值**：周轮换（TODO(@allen) 具体排班表）
+- **轮值**：周轮换（`〔运维相关〕`具体排班表见 ops / 团队文档）
 - **响应 SLA**：P0 事件 **5 分钟**内响应；P1 事件 30 分钟内
-- **on-call 工具**：（TODO 选型 — 云监控告警推送 / 钉钉机器人 / 电话 / PagerDuty？）
+- **on-call 工具**：`〔运维相关〕`选型由 ops 决定（候选：云监控告警推送 / 钉钉机器人 / 电话 / PagerDuty）
 - **跨团队 on-call**：发布期间多团队联合值守（开发 + ops + QA）
 - **on-call 笔记**：每次 on-call 完成后在团队文档登记（异常 / 处理 / 改进项）
 

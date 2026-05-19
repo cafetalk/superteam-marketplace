@@ -14,9 +14,9 @@ t-rex 后端是一组 Java 微服务集群，承担：
 | 维度 | 选型 |
 |---|---|
 | 语言 | Java 17 |
-| 应用框架 | Spring Boot（继承 `kiki-framework` parent POM） |
+| 应用框架 | Spring Boot（继承 `trex-framework` parent POM） |
 | RPC | Apache Dubbo |
-| API | OpenAPI（生成 Controller）+ GraphQL（drex-core 查询层） |
+| API | OpenAPI（生成 Controller）+ GraphQL（trex-core 查询层） |
 | ORM | MyBatis-Plus 3.5.3 |
 | 主存储 | Aliyun OTS TableStore（NoSQL） |
 | 辅存储 | PostgreSQL 42.5.4 + Druid 连接池 |
@@ -28,8 +28,8 @@ t-rex 后端是一组 Java 微服务集群，承担：
 
 ## 关键非显然事实
 
-1. **kiki-framework parent POM 是 t-rex 后端工程的共同祖先**。继承它会自动得到一组 starter（OTS / Redis / 可观测性）+ 统一依赖版本管理。详见 `02-architecture.md`。
-2. **evg-scaffold** 是新建工程的脚手架，仓库 https://gitlab.com/Keccak256-evg/gwave-dev/evg-scaffold ，亦可作 jar 依赖按需引入。详见 `02-architecture.md`。
+1. **trex-framework parent POM 是 t-rex 后端工程的共同祖先**。继承它会自动得到一组 starter（OTS / Redis / 可观测性）+ 统一依赖版本管理。详见 `02-architecture.md`。
+2. **trex-scaffold** 是新建工程的脚手架，仓库 https://gitlab.com/Keccak256-evg/t-rex/scaffold/trex-scaffold ，亦可作 jar 依赖按需引入。详见 `02-architecture.md`。
 3. **包名前缀双轨**：新工程统一 `xyz.trex.*`；老工程保持 `com.drex.*` 不变。详见 `04-coding-standards.md`。
 4. **两种典型形态并存**：Gateway（业务领域分模块）vs Dubbo 领域服务（技术分层分模块）。详见 `03-module-design.md`。
 5. **MDC 强制字段**：日志必须带 `traceId / spanId / module / severity`，由观测 starter 注入。详见 `07-exception-and-logging.md`。

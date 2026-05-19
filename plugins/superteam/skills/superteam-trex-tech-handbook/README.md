@@ -14,7 +14,7 @@
 
 ## 状态
 
-M1（首发）：框架骨架 + 已知现状占位 + `TODO(@allen)` 待补条目。详见 `docs/skills-design/2026-05-11-trex-tech-handbook.md`。
+M1.5（dev 中）：框架骨架 + 22 项目业务范围现状记录 + sub-group 重组（含 `scaffold/`）。Roadmap 与未决项见 [`docs/skills-design/2026-05-11-trex-tech-handbook.md`](../../docs/skills-design/2026-05-11-trex-tech-handbook.md)。
 
 ## 维护
 
