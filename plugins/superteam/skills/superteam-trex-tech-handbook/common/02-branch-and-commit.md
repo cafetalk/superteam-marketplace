@@ -39,7 +39,7 @@ dev | beta | master
 **【强制】** 三条线（trex team 新约定）：
 - **`dev`** —— K8s **dev 环境基线分支**（开发联调）；通过 `review_*` MR 合入流程详见 `common/03`
 - **`beta`** —— K8s **beta 环境基线分支**（测试人员部署）；具体版本部署用 `beta_<date>_<keyword>`
-- **`master`** —— K8s **prod 环境基线分支**（真实用户）；只允许通过 `beta_<date>_<keyword>` 发布 MR 进入
+- **`master`** —— K8s **prod 环境基线分支**（真实用户，**prod 部署仅从 `master`**）；只允许通过 `beta_<date>_<keyword>` 发布 MR 进入；详见 `common/04-ci-and-release.md`
 
 两个核心 MR：
 - **提测 MR**：`dev_<date>_<name>` → `review_<date>_<name>` —— team lead 审核（见 `common/03`）

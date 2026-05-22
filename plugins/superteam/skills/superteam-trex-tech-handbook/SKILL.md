@@ -1,8 +1,8 @@
 ---
 name: superteam-trex-tech-handbook
-description: Use when starting any t-rex ecosystem work that is NOT inside the superteam sub-project — loads architecture, microservice catalog, coding standards, branch/commit rules, test handoff SOP for t-rex backend (and placeholder frontend) development.
+description: Use when starting any t-rex ecosystem work that is NOT inside the superteam sub-project — loads architecture, microservice catalog, coding standards, branch/commit rules, test handoff SOP for t-rex backend and frontend development.
 version: 1.2.0
-last_reviewed: 2026-05-15
+last_reviewed: 2026-05-21
 ---
 
 # t-rex Tech Handbook
@@ -47,7 +47,19 @@ Development context pack for the **t-rex ecosystem** (excluding the `superteam` 
 - [`backend/appendix/`](backend/appendix/) — glossary, toolchain, templates
 
 ### Frontend
-- [`frontend/README.md`](frontend/README.md) — placeholder (separate iteration)
+- [`frontend/00-overview.md`](frontend/00-overview.md) — 前端定位；四类子系统概述
+- [`frontend/01-apps.md`](frontend/01-apps.md) — 10 个前端子系统清单（Web App / Extension / SDK / zkTLS Provider）
+- [`frontend/02-architecture.md`](frontend/02-architecture.md) — 技术栈基线（Web App / Extension / SDK / WASM Provider）
+- [`frontend/03-project-structure.md`](frontend/03-project-structure.md) — 三种目录形态（页面功能型 / 扩展型 / 库型）
+- [`frontend/04-coding-standards.md`](frontend/04-coding-standards.md) — 文件 / 组件 / TypeScript 命名规范
+- [`frontend/05-api-and-integration.md`](frontend/05-api-and-integration.md) — REST codegen / GraphQL codegen / 链上 API 集成
+- [`frontend/06-state-and-data.md`](frontend/06-state-and-data.md) — React Query（服务端状态）+ Jotai（客户端状态）
+- [`frontend/07-error-and-monitoring.md`](frontend/07-error-and-monitoring.md) — ErrorBoundary；BugSnag；GA
+- [`frontend/08-test-handoff.md`](frontend/08-test-handoff.md) — **前端提测 SOP**（trexreview_* / trexbeta_*）
+- [`frontend/09-testing.md`](frontend/09-testing.md) — Web App / Extension / SDK 测试策略
+- [`frontend/10-security.md`](frontend/10-security.md) — token 存储；XSS；Web3 签名安全；Extension 权限
+- [`frontend/11-quality-ops.md`](frontend/11-quality-ops.md) — 多环境部署（Vercel / OSS / Chrome Store）
+- [`frontend/appendix/`](frontend/appendix/) — glossary, toolchain, new-app-checklist
 
 ## Conventions
 
@@ -59,5 +71,6 @@ Every chapter uses 阿里巴巴 Java 开发手册 style:
 
 ## Status
 
-M1.5 (in progress): framework + 22-project current-state catalog + sub-group restructure (incl. `scaffold/`).
-Roadmap and open items: `docs/skills-design/2026-05-11-trex-tech-handbook.md`.
+- **Backend + Common (M1.5, 2026-05-21)**: 30 微服务 + 6 基础设施 + 5 agentic catalog；Push Rule v3.0；Owner 字段恢复；服务关系图 3 张 mermaid 落地。详见 `backend/01-microservices.md` 全局视图 + 服务关系图段。
+- **Frontend (M3, in progress, by @elaine)**: 11 章 + appendix 已 scaffolded；`01-apps.md` 含 10 子系统条目；C5–C7 仍有 TODO(@elaine) 待 field research。
+- Roadmap 与 open items: `docs/skills-design/2026-05-11-trex-tech-handbook.md`。

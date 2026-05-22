@@ -76,7 +76,7 @@ push rule 存在但 `branch_name_regex == ""`，即无任何限制。
 2. 不符合 v3.0 的分支：要么先 rename 到合规，要么决定"是否接受 grandfather"
 3. 确认 ok 后 PUT v3.0 Target
 
-⚠️ **特别注意 `skills/superteam`（handbook 自家仓）**：handbook 历次 PR 用的都是 `dev_<YYMMDD>_<kebab>` 形式（6 位日期），与 v3.0 兼容 ✅；可以直接 PUT。
+⚠️ **特别注意 `agentic/superteam`（handbook 自家仓；2026-05-19 由 `skills/` rename）**：handbook 历次 PR 用的都是 `dev_<YYMMDD>_<kebab>` 形式（6 位日期），与 v3.0 兼容 ✅；可以直接 PUT。
 
 ## 执行顺序
 

@@ -53,6 +53,13 @@ ops/gitlab-cis 仓 master 分支
                                           研发负责人最终审核
 ```
 
+**反例**：
+```text
+❌ 从 review_<date>_<name> 直接发 prod                    （必须经 QA 整合到 beta_* 才发）
+❌ 从 dev 长期分支发 prod                                  （prod 部署仅来自 master）
+❌ 临时切 ops/gitlab-cis 的 ref 把别的分支当 prod 源       （CI 仅认 master 触发 prod 流水线）
+```
+
 | K8s 环境 | 长期基线分支 | 部署来源 |
 |---|---|---|
 | **dev** | `dev` | 短期 `dev_<date>_<name>` 各自部署（联调） |

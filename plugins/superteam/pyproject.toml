@@ -25,6 +25,10 @@ extract = [
 dev = [
   "pytest>=7.0.0",
 ]
+web = [
+  "fastapi>=0.116.0",
+  "uvicorn[standard]>=0.35.0",
+]
 
 [tool.uv]
 package = false

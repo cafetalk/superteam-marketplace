@@ -1,56 +1,53 @@
-# 前端规范（占位）
+# 前端层（frontend/）
 
-`〔t-rex 现状〕`：**前端规范规划中**，由 [TREX-405](https://linear.app/t-rex-v1/issue/TREX-405/) 独立推进。本目录目前仅作占位，避免 SKILL.md 导航 404。
+t-rex 前端开发上下文包，涵盖 10 个前端子系统的技术规范（[TREX-405](https://linear.app/t-rex-v1/issue/TREX-405/) 落地，by @elaine）。
 
-## ⚠️ AI agent 读到此页时
+**适用范围**：所有 t-rex 前端项目（web/ + anchor 子域前端 + quest manage-web + agentic/superteam-web + sdk/ + trex-tls/ 内 Node-based 子项目）。
 
-**DO**：
-- 遵守 `common/*` 通用规范（分支 / commit / 提测 / Linear 等都适用）
-- 参考具体前端仓的 `README.md` + `package.json` + 现有代码模式
-- 把"已知前端仓"段（下方）里列出的仓作为**模式 fallback** —— 同类项目用同套技术栈倾向
+**与 common/ 关系**：本目录是 **frontend-specific** 规范；分支 / commit / 提测 / Linear / CI / 发布等流程规范仍在 `common/` 章，前端项目 **同样适用**。
 
-**DO NOT**：
-- 把"占位"理解为"前端无任何规范" —— 缺的是 **handbook 化的明文规范**，不是规范本身
-- 自创全新技术栈 / 工程结构 —— 先看现有前端仓怎么做的再决定
+## 章节索引
 
-## 适用于前端的通用规范（已生效）
+| 章节 | 核心问题 |
+|---|---|
+| [`00-overview.md`](00-overview.md) | 前端在 t-rex 中的定位；四类子系统概述 |
+| [`01-apps.md`](01-apps.md) ⭐ | 前端应用 / SDK / 工具清单（10 个子系统条目）|
+| [`02-architecture.md`](02-architecture.md) | 各类子系统技术栈基线（Web App / Extension / SDK / zkTLS Provider）|
+| [`03-project-structure.md`](03-project-structure.md) | 三种目录形态（页面功能型 / 扩展型 / 库型）|
+| [`04-coding-standards.md`](04-coding-standards.md) | 文件 / 组件 / 类型命名；ESLint / Prettier |
+| [`05-api-and-integration.md`](05-api-and-integration.md) | REST codegen / GraphQL codegen / 链上 API 集成 |
+| [`06-state-and-data.md`](06-state-and-data.md) | React Query（服务端状态）+ Jotai（客户端状态）|
+| [`07-error-and-monitoring.md`](07-error-and-monitoring.md) | 错误边界；BugSnag；GA；用户侧错误展示 |
+| [`08-test-handoff.md`](08-test-handoff.md) ⭐ | **前端提测流程 SOP**（trexreview_* / trexbeta_*）|
+| [`09-testing.md`](09-testing.md) | Web App / Extension / SDK 各自测试策略 |
+| [`10-security.md`](10-security.md) | token 存储；XSS / CSRF；Web3 签名安全；Extension 权限 |
+| [`11-quality-ops.md`](11-quality-ops.md) | 构建产物；多环境部署（Vercel / OSS / Chrome Store）|
+| [`appendix/glossary.md`](appendix/glossary.md) | 前端 + Web3 / zkTLS 术语表 |
+| [`appendix/toolchain.md`](appendix/toolchain.md) | Node / 包管理器 / IDE / 命令速查 |
+| [`appendix/templates/new-app-checklist.md`](appendix/templates/new-app-checklist.md) | 新建前端子系统 Checklist（A/B/C 三类）|
 
-即便前端规范尚未填充，前端工作**仍然适用** `common/` 层：
+## 通用规范交叉引用
 
 - `common/01-gitlab-and-workspace.md` — GitLab 组织 + 本地工作区目录
-- `common/02-branch-and-commit.md` — 分支命名（`dev_*` / `review_*` 等 trex team 新规约）+ commit msg 前缀
+- `common/02-branch-and-commit.md` — 分支命名（`dev_<YYMMDD>_<name>` 等 trex team 新规约，v3.0 6-位日期）+ commit msg 前缀
 - `common/03-test-handoff.md` — 提测流程 SOP
 - `common/04-ci-and-release.md` — CI 委托 + 发布 + 回滚
 
-## 已知前端仓（fallback 参考）
+## 设计文档
 
-GitLab 路径前缀：`gitlab.com/Keccak256-evg/t-rex/`
+本层的设计与实现计划：[`docs/skills-design/2026-05-12-trex-tech-handbook-frontend.md`](../../../docs/skills-design/2026-05-12-trex-tech-handbook-frontend.md)
 
-| Sub-group | 仓 | 形态（粗略） |
-|---|---|---|
-| `web/` | `trex-website` | 营销 / 落地页 |
-| `web/` | `trex-extension` | 浏览器 extension |
-| `web/` | `dapp-dashboard` | Web3 dashboard |
-| `web/` | `trex-2b` | B2B portal |
-| `web/` | `nft-metadata-tookit` | NFT 工具 UI |
-| `anchor/` | `anchor-admin` | Node/TS admin SPA |
-| `anchor/` | `anchor-dashboard` | Node/TS 用户 dashboard |
-| `anchor/` | `anchor-sdk` | Node/TS 客户端 SDK |
+## 阅读顺序
 
-栈细节看各仓 `README.md` + `package.json`。AI agent 起新前端工作时**优先参考其中同形态的仓**。
+开发前端任务时，先读 `common/`（通用规范），再按需读 `frontend/`：
 
-## 前端规范将覆盖的内容（拟，由 TREX-405 推进）
-
-- 技术栈基线（框架 / 构建 / 包管理 / TypeScript）
-- 目录与模块划分准则
-- 组件库 / 设计系统对接
-- 状态管理与数据获取
-- 测试策略（unit / e2e）
-- 与后端契约（OpenAPI client 生成 / GraphQL codegen）
-- 性能与可观测性
-- 安全（CSP / token 存储 / XSS / CSRF）
+1. `frontend/00-overview.md` — 前端定位
+2. `frontend/01-apps.md` — 找到目标子系统
+3. `frontend/02-architecture.md` — 技术栈确认
+4. 按需读后续章节
 
 ## 维护
 
-- 本 README 在前端规范启动后会被 `frontend/SKILL.md`（或 `00-overview.md`）替代
-- 现有前端仓清单变化时同步上方表格
+- 本目录由 @elaine 维护（TREX-405）
+- 新增前端子系统时同步更新 `01-apps.md` + `appendix/templates/new-app-checklist.md`
+- 跨 common/ 与 frontend/ 的规约冲突以 common/ 为准（common/ 是平台级强制）

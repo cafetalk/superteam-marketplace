@@ -198,7 +198,7 @@ evg-scaffold-common / -endpoint / -endpoint-client / -event / -event-client /
 
 **为何用户在本 handbook 仓 push 6 位日期分支成功？**
 
-→ `Keccak256-evg/t-rex/skills/superteam`（handbook 自身仓）的 push rule **branch_name_regex 为空**（无任何限制）。所以本仓内 6 位日期能用，**但跨仓到 backend 服务就会失败**。
+→ `Keccak256-evg/t-rex/agentic/superteam`（handbook 自身仓；2026-05-19 由 `skills/` rename 到 `agentic/`）的 push rule **branch_name_regex 为空**（无任何限制）。所以本仓内 6 位日期能用，**但跨仓到 backend 服务就会失败**。
 
 **实际 trex-core 活跃分支抽样**（branches API `sort=updated_desc`）：
 

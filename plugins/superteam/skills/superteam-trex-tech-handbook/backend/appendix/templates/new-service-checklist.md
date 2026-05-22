@@ -63,7 +63,7 @@
 
 - [ ] 在 `backend/01-microservices.md` 追加本服务条目（按模板填全字段）
 - [ ] 标注业务范围、技术形态（Gateway / Dubbo 领域服务）、上下游
-- [ ] **不填负责人**（`01-microservices.md` 已说明：不收录 owner 字段）
+- [ ] **填 Owner 字段**（必填；handbook policy 2026-05-21 起恢复 owner 字段，详见 `01-microservices.md` §服务条目模板）
 
 ## 首次 commit
 
