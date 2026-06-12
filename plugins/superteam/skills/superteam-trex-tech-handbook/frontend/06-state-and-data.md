@@ -61,9 +61,17 @@ trex-website 当前钱包集成方案（作为 Web App 基准）：
 - **`@reown/appkit @1.7.3`**（WalletConnect 的继任 SDK）：钱包连接 UI + 多链支持；配合 `@reown/appkit-adapter-wagmi`（EVM）+ `@reown/appkit-adapter-solana` 使用
 - **`thirdweb @5.105.29`**：辅助链上操作
 
-钱包连接状态通过 wagmi 的 `useAccount` hook 读取，无需手动存入 Jotai atom。
+- **Portal 主站**：连接态经 **wagmi**（`useAccount` / `useConnect` / `useSignMessage` 等）与 **Reown AppKit** 读取；**不要**写入 Jotai atom
+- **Install Wallet Connect 页**（`/install-wallet-connect`，供扩展 iframe 加载）：使用 **thirdweb**（`ThirdwebProvider` + `useActiveWalletConnectionStatus` / `useActiveWallet` / `useConnect`，见 `app/install-wallet-connect/providers/IWCProvider.tsx`）；连接态存在 iframe 内 thirdweb 与 `localStorage` 的 `thirdweb:*` 键，经 `useIWCWindowMessage` 以 `postMessage` 同步
+- **Portal 与扩展联动**：`ActiveWalletConnectionStatusProvider` 在页面未直连 Trex 钱包时，通过 `postMessage` 向扩展 iframe 查询连接态（`TREX_REQUEST_TYPE_GET_ACTIVE_WALLET_CONNECTION_STATUS`）
 
-trex-extension 的钱包状态管理方案：TODO(@elaine) 确认（Extension 场景与 Web App 不同，需查仓库）
+**trex-extension**（与 Web App 分离，勿照搬 Portal 的 wagmi 方案）：
+
+- 扩展业务代码**未挂载** `WagmiProvider`（`package.json` 含 `wagmi`/`viem`，但 `src/` 无 wagmi hooks；钱包 UI 委托给网站 iframe）
+- Content Script `src/pages/content/walletConnect/WalletConnect.tsx`：隐藏 iframe 加载 trex-website **`/install-wallet-connect`**（URL 来自 `config/api.ts` 的 `iframeUrl`）；content ↔ iframe ↔ background 经 **`postMessage` / `chrome.runtime.sendMessage`** 转发连接、余额、估 Gas、发交易等（`TREX_REQUEST_TYPE_*`、`trex_extension_*`）
+- **运行时钱包状态**在 iframe 内由 **thirdweb** 管理；扩展侧用 **`chrome.storage.local`** 持久化桥接数据（如 `trex_wallet_connect_storage`、`trex_wallet_connect_state`、`trex_login_data`），并将 thirdweb 的 `localStorage` 快照（`thirdweb:active-chain` 等）在 iframe 与扩展间同步
+- **Redux** 仅服务 TLSNotary / 公证流程等扩展内部状态机，**不**承担钱包连接态
+- `〔t-rex 现状〕` Content Script 根组件里 `<WalletConnect />` 当前被注释，但 iframe 桥接实现仍保留；启用后即走上述路径
 
 安全要求：
 - 私钥 / 敏感签名材料：**禁止**存入 localStorage / sessionStorage（仅内存 + 扩展安全存储 API）

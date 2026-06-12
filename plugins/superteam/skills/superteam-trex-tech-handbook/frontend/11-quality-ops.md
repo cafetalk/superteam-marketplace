@@ -18,6 +18,10 @@
   - passport-sdk：npm 公开发布（`@keccak256-evg/passport-sdk @1.2.0`）
   - 版本遵循 semver；breaking change 需 major 版本号递增
 
+## 发布单【强制】
+
+prod 发布单见 [`appendix/templates/release-checklist.md`](appendix/templates/release-checklist.md)。
+
 ## 多环境部署（已知现状）
 
 ### Vercel（Web App）

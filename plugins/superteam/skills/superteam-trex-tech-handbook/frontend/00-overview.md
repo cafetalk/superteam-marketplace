@@ -56,7 +56,7 @@ t-rex 前端是面向用户（C 端）、项目方（B 端）与内部运营的 
 
 `common/` 章节（分支命名 / commit 规范 / 提测 / CI / Linear）前端**完全复用**，无需重复。
 
-前端唯一差异：**提测 SOP** 使用不同的分支前缀（`trexreview_*` / `trexbeta_*`，详见 `frontend/08-test-handoff.md`），与后端 `common/03-test-handoff.md` 的流程并行存在。
+前端提测 / 发布与 `common/03`、`common/07`、`common/04` 一致；分支速查见 `frontend/08-test-handoff.md`。
 
 ## GitLab Sub-group
 

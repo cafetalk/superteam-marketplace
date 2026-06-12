@@ -45,7 +45,7 @@ trex-website 当前 CSP 配置（`next.config.ts` headers 中）：
 
 含义：
 - `frame-ancestors 'self' chrome-extension://*` — 限定页面只能被同源页面或 Chrome 扩展嵌入（防 clickjacking）
-- 注：当前 CSP 较精简，未限制 `script-src` / `connect-src` 等。TODO(@elaine) 是否扩展更严格的 CSP 规则。
+- 注：当前 CSP 较精简，未限制 `script-src` / `connect-src` 等。
 
 新 Web App 建议基线（在 trex-website 基础上扩展）：
 - 禁止 `eval` 和 `inline-script`（需配合 `nonce` 或 `hash`）

@@ -3,6 +3,7 @@ name: superteam-trex-tech-handbook
 description: Use when starting any t-rex ecosystem work that is NOT inside the superteam sub-project — loads architecture, microservice catalog, coding standards, branch/commit rules, test handoff SOP for t-rex backend and frontend development.
 version: 1.2.0
 last_reviewed: 2026-05-21
+status: ready
 ---
 
 # t-rex Tech Handbook
@@ -56,7 +57,7 @@ Development context pack for the **t-rex ecosystem** (excluding the `superteam` 
 - [`frontend/05-api-and-integration.md`](frontend/05-api-and-integration.md) — REST codegen / GraphQL codegen / 链上 API 集成
 - [`frontend/06-state-and-data.md`](frontend/06-state-and-data.md) — React Query（服务端状态）+ Jotai（客户端状态）
 - [`frontend/07-error-and-monitoring.md`](frontend/07-error-and-monitoring.md) — ErrorBoundary；BugSnag；GA
-- [`frontend/08-test-handoff.md`](frontend/08-test-handoff.md) — **前端提测 SOP**（trexreview_* / trexbeta_*）
+- [`frontend/08-test-handoff.md`](frontend/08-test-handoff.md) — 前端提测 / 发布分支（`dev_*` → `review_*` → `beta_*` → `master`）
 - [`frontend/09-testing.md`](frontend/09-testing.md) — Web App / Extension / SDK 测试策略
 - [`frontend/10-security.md`](frontend/10-security.md) — token 存储；XSS；Web3 签名安全；Extension 权限
 - [`frontend/11-quality-ops.md`](frontend/11-quality-ops.md) — 多环境部署（Vercel / OSS / Chrome Store）

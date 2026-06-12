@@ -1,4 +1,4 @@
-# 测试策略 TODO完善
+# 测试策略
 
 ## Web App 单测【强制】
 
@@ -6,7 +6,6 @@
 - **组件测试**：`@testing-library/react ^16.0.0` + `@testing-library/jest-dom ^6.6.0`
 - **环境**：jsdom（`jsdom ^25.0.0`，在 vitest.config.ts 中配置 `environment: 'jsdom'`）
 - **覆盖范围**：公共组件 / 自定义 Hook / 工具函数 / API 封装层
-- **覆盖率要求**：TODO 统一指标
 
 `〔t-rex 现状〕` 各仓库测试框架不一致：
 - trex-website：**Vitest** + Testing Library + jsdom
@@ -46,7 +45,7 @@ test('should return badge list', () => {
 
 ## E2E 测试【推荐】
 
-- **工具**：TODO(@elaine)（Playwright / Cypress？）
+- **工具**：Playwright
 - **覆盖范围**：关键用户路径（Badge Mint / Onboarding 完成 / 钱包连接）
 - **运行环境**：随 E2E 工具确定后一并规划 CI 集成方式
 

@@ -198,7 +198,7 @@ def _build_cycle_lookup(issues: list[dict[str, Any]]) -> dict[str, dict[str, str
 def _collect_linear(member: str, start: datetime, end: datetime, first: int) -> dict[str, Any]:
     args = [
         "--tool", "list_issues",
-        "--args-json", json.dumps({"assignee": member, "first": first}, ensure_ascii=False),
+        "--args-json", json.dumps({"assignee": member, "limit": first}, ensure_ascii=False),
     ]
     result = _run_script("superteam-linear/scripts/query_linear.py", args)
     payload = result.get("payload", {}) or {}
@@ -1004,7 +1004,7 @@ def main() -> None:
     )
     parser.add_argument("--week", "-w", choices=["this", "last"], help="this=本周, last=上周")
     parser.add_argument("--format", "-f", choices=["markdown", "json"], default="markdown")
-    parser.add_argument("--linear-first", type=int, default=100000, help="Linear 一次拉取任务数量")
+    parser.add_argument("--linear-first", type=int, default=250, help="Linear 一次拉取任务数量（上限 250，由 Linear MCP 限制）")
     parser.add_argument(
         "--require-linear",
         choices=["true", "false"],

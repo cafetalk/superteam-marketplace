@@ -25,14 +25,24 @@ def get_installed_skills() -> list[dict]:
         skill_dir = skill_md.parent
         if skill_dir.name.startswith("_"):
             continue
-        # Parse name from frontmatter
+        # Parse name + optional explicit status from frontmatter.
+        # Status defaults to a heuristic: a skill is "ready" if it ships
+        # executable scripts. Content-pack skills (docs only, no scripts/)
+        # declare `status: ready` in frontmatter to opt out of the heuristic.
         name = skill_dir.name
         has_scripts = (skill_dir / "scripts").is_dir()
-        status = "ready" if has_scripts else "planned"
-        for line in skill_md.read_text().splitlines():
-            if line.startswith("name:"):
-                name = line.split(":", 1)[1].strip()
-                break
+        declared_status = None
+        lines = skill_md.read_text().splitlines()
+        if lines and lines[0].strip() == "---":
+            # Scan only the frontmatter block (between the first two fences).
+            for line in lines[1:]:
+                if line.strip() == "---":
+                    break
+                if line.startswith("name:"):
+                    name = line.split(":", 1)[1].strip()
+                elif line.startswith("status:"):
+                    declared_status = line.split(":", 1)[1].strip()
+        status = declared_status or ("ready" if has_scripts else "planned")
         skills.append({"name": name, "dir": skill_dir.name, "status": status})
     return skills
 

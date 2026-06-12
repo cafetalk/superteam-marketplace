@@ -18,13 +18,14 @@ t-rex 前端开发上下文包，涵盖 10 个前端子系统的技术规范（[
 | [`05-api-and-integration.md`](05-api-and-integration.md) | REST codegen / GraphQL codegen / 链上 API 集成 |
 | [`06-state-and-data.md`](06-state-and-data.md) | React Query（服务端状态）+ Jotai（客户端状态）|
 | [`07-error-and-monitoring.md`](07-error-and-monitoring.md) | 错误边界；BugSnag；GA；用户侧错误展示 |
-| [`08-test-handoff.md`](08-test-handoff.md) ⭐ | **前端提测流程 SOP**（trexreview_* / trexbeta_*）|
+| [`08-test-handoff.md`](08-test-handoff.md) ⭐ | **前端提测 / 发布分支**（`dev_*` → `review_*` → `beta_*` → `master`）|
 | [`09-testing.md`](09-testing.md) | Web App / Extension / SDK 各自测试策略 |
 | [`10-security.md`](10-security.md) | token 存储；XSS / CSRF；Web3 签名安全；Extension 权限 |
 | [`11-quality-ops.md`](11-quality-ops.md) | 构建产物；多环境部署（Vercel / OSS / Chrome Store）|
 | [`appendix/glossary.md`](appendix/glossary.md) | 前端 + Web3 / zkTLS 术语表 |
 | [`appendix/toolchain.md`](appendix/toolchain.md) | Node / 包管理器 / IDE / 命令速查 |
 | [`appendix/templates/new-app-checklist.md`](appendix/templates/new-app-checklist.md) | 新建前端子系统 Checklist（A/B/C 三类）|
+| [`appendix/templates/release-checklist.md`](appendix/templates/release-checklist.md) | 前端 prod 发布单 |
 
 ## 通用规范交叉引用
 
