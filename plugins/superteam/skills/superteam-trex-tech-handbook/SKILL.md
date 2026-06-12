@@ -30,6 +30,7 @@ Development context pack for the **t-rex ecosystem** (excluding the `superteam` 
 - [`common/05-task-tracking.md`](common/05-task-tracking.md) — **Linear issue 生命周期 + 粒度 + 串联代码**
 - [`common/06-development-flow.md`](common/06-development-flow.md) — **研发过程 端到端 SOP + Code review 自检 checklist**
 - [`common/07-testing-process.md`](common/07-testing-process.md) — **测试过程 SOP（QA 整合 `review_*` → `beta_<date>_<keyword>` + k8s beta env 测试 + sign-off）**
+- [`common/08-release-record.md`](common/08-release-record.md) — 提测/发布记录落 git（superteam-trex-delivery）
 - [`common/appendix/project-prefix.md`](common/appendix/project-prefix.md) — full Push Rule regex + project prefix history
 
 ### Backend (Java)

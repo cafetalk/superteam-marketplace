@@ -16,14 +16,16 @@
         ▼
         k8s dev env 自动部署（联调）
         │
-        │  研发助手代建 MR
+        │  superteam-trex-delivery 的 submit 代建 MR
         ▼
 [2] 建提测 MR: dev_<date>_<name> → review_<date>_<name>
         │
-        │  - review_* 若不存在，由 MR 创建（基于 master tip）
-        │  - MR description 首段：Tracks Linear TREX-<id>
-        │  - 指定 team lead 为 reviewer
-        │  - Linear issue → In Review
+        │  - 由 `superteam-trex-delivery` 的 `submit` 代建（见 common/08）：
+        │      submit --dev-branch dev_<date>_<name> --issue TREX-1 [--issue TREX-2 ...] --repo <微服务 repo>
+        │  - review_* 若不存在，submit 从 master tip 建
+        │  - MR description 每个 issue 一行：Tracks Linear TREX-<id>
+        │  - reviewer/assignee = 该 repo team lead（references/team-leads.json，缺则 --reviewer）
+        │  - Linear issue → In Review（submit best-effort）
         ▼
 [3] team lead 审核
         │
@@ -44,7 +46,7 @@
 | Step | 动作 | 关键产物 |
 |---|---|---|
 | 1 | **开发**：在 worktree 中的 `dev_<date>_<name>` 分支开发；push 触发 k8s **dev env 自动部署**用于联调；自测、跑单测、commit 消息合规 | `dev_<date>_<name>` 远端分支 + k8s dev env 部署 |
-| 2 | **建提测 MR**：研发助手代建 MR，**源 `dev_<date>_<name>`，目标 `review_<date>_<name>`**（review_* 不存在则 MR 创建时自动从 master tip 切出来）；description 首段 `Tracks Linear TREX-<id>`；指定 team lead 为 reviewer | GitLab MR |
+| 2 | **建提测 MR**：由 `superteam-trex-delivery` 的 `submit` 代建（`submit --dev-branch dev_<date>_<name> --issue TREX-1 [--issue TREX-2 ...] --repo <微服务 repo>`，见 `common/08`）：建 `review_<date>_<name>`（不存在则从 master tip 切）+ **源 `dev_<date>_<name>`、目标 `review_<date>_<name>`** 的 MR；一次提测(submission)=一个 dev 分支/一个微服务，可关联多个 Linear issue（`--issue` 可重复，全部 In Review）；description 每个 issue 一行 `Tracks Linear TREX-<id>`；reviewer = 该 repo team lead（`references/team-leads.json`，缺则 `--reviewer` 指定；assignee 留作者/开发） | GitLab MR + submission.md |
 | 3 | **team lead 审核**：通过即"提测完成"；若 comment，开发者在 `dev_<date>_<name>` 上修复 + 新 commit + push，MR 自动 refresh，team lead re-review | review approved |
 | 4 | **merge**：team lead 或开发者 merge MR；`review_<date>_<name>` 拥有审核通过快照 | review 分支 = 审核通过代码 |
 | 5 | **进入 QA 整合环节**：见 `common/07-testing-process.md` §QA 整合；多个 `review_<date>_<name>` 由 QA 自行整合到 `beta_<date>_<keyword>` | beta_<date>_<keyword> 分支 |
@@ -79,7 +81,7 @@
 | # | 字段 | 说明 |
 |---|---|---|
 | 1 | **提测人** | `@<gitlab-handle>` |
-| 2 | **关联 Linear** | `TREX-<id>`（与 MR description 首段一致） |
+| 2 | **关联 Linear** | `TREX-<id>`（可多个，逗号分隔；与 MR description 各 `Tracks Linear` 行一致） |
 | 3 | **MR 链接** | 完整 GitLab MR URL |
 | 4 | **目标分支** | `review_<date>_<name>`（与源 dev_<date>_<name> 配对） |
 | 5 | **变更范围** | 功能列表 + 影响面（接口 / DB 表 / OTS 表 / Nacos 配置 / 上下游服务） |
@@ -90,7 +92,7 @@
 
 ### 归档位置
 
-`〔t-rex 现状〕`：**统一 paste 在 Linear issue comment**（与 issue 联动直观、不会丢、可追溯）。GitLab MR description / 钉钉文档作辅助，不作主归档；中心化提测单文档暂不建（开销 > 收益）。
+`〔t-rex 现状〕`：提测单**写入 `trex-releases` 仓**（`releases/<release-item>/submissions/<date>_<name>/submission.md`，submission key=`<date>_<name>`、可关联多个 Linear issue，由 `superteam-trex-delivery` 的 `submit` 生成，详见 `common/08-release-record.md`）。**每个关联 Linear issue 的 comment 仅留指向该 submission.md 的链接**；记录正文不再 paste 在 comment 里。钉钉 `.axls` 表格停止维护。
 
 ## bug 回流 SOP【强制】
 
@@ -143,7 +145,7 @@
 | **主负责人**（Linear issue assignee） | 协调进度 / 填提测单 / 沟通 team lead / 最终签字 |
 | **协作者**（贡献 commit / sub-issue assignee） | 完成各自 commit + Linear comment 同步进度 |
 | **Team lead** | review MR / 不直接编码（除非 fallback） |
-| **研发助手（AI）** | 代建 MR、协助分支管理、Linear 状态同步 |
+| **研发助手（AI）** | 跑 `superteam-trex-delivery submit` 代建 MR（见 `common/08`）、协助分支管理、Linear 状态同步 |
 
 **默认约定**：
 

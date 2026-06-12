@@ -184,7 +184,7 @@ t-rex 后端 prod 发布**必须灰度**，不允许全量直发（仅 P0 hotfix
 | 11 | **发布前 checklist** | 见模板 |
 | 12 | **发布后 checklist** | 见模板 |
 
-发布单贴 Linear 发布 issue comment（或与本批 dev 上的 issue 关联），全程更新进度。
+发布单落 `trex-releases/releases/<batch>/RELEASE.md`（由 `superteam-trex-delivery` skill 的 `aggregate` 汇总本批提测单生成，manual 区人工维护版本号 / 灰度 / 回滚 checklist；详见 `common/08-release-record.md`），不再单独维护钉钉表格。Linear 发布 issue comment 仅留指向 `RELEASE.md` 的链接，全程更新进度。
 
 ## 回滚 SOP【强制】
 
