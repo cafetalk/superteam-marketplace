@@ -2,17 +2,17 @@
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-from dimensions import DIMENSIONS, render_system_matrix  # noqa
+from dimensions import render_system_matrix, load_dimensions, dimension_keys  # noqa
 from model import SystemChange  # noqa
 
 
 def test_dimensions_complete():
-    keys = {d["key"] for d in DIMENSIONS}
-    # 20 个 canonical 维度（含服务器脚本）
-    for k in ["MSE配置", "RDS DDL", "RDS DML", "TableStore表", "容器镜像",
-              "RPC兼容性", "调度任务", "服务器脚本"]:
+    keys = dimension_keys()
+    for k in ["MSE配置", "RDS DDL", "容器镜像", "RPC服务兼容性", "服务器终端脚本",
+              "内部LB端口", "外部LB地址"]:
         assert k in keys
-    assert len(DIMENSIONS) == 20
+    assert len(load_dimensions()) == 22
+    assert "内部LB" not in keys and "RPC兼容性" not in keys   # 旧合并/简称名废弃
 
 
 def test_render_only_nonempty_dimensions():
@@ -35,3 +35,20 @@ def test_render_system_with_empty_dims_keeps_heading():
 
 def test_render_empty_systems_says_none():
     assert "无" in render_system_matrix([])
+
+
+def test_load_dimensions_from_yaml_has_22_keys():
+    from dimensions import load_dimensions, dimension_keys
+    dims = load_dimensions()
+    assert len(dims) == 22
+    keys = dimension_keys()
+    assert "内部LB端口" in keys and "外部LB地址" in keys   # LB 拆 4
+    assert "RPC服务兼容性" in keys and "服务器终端脚本" in keys  # 全名
+    assert "内部LB" not in keys                            # 旧合并名废弃
+
+
+def test_dimension_order_matches_yaml_sequence():
+    from dimensions import dimension_order
+    order = dimension_order()
+    assert order["MSE配置"] == 0
+    assert order["服务器终端脚本"] == 21

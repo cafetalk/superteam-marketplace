@@ -39,3 +39,49 @@ class TaskRecord:        # 一次提测(submission)：一个 dev 分支 / 一个
     mr_url: str
     review_branch: str
     systems: list[SystemChange] = field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# changes.yaml 数据模型（v1.4.0 新增）
+# ---------------------------------------------------------------------------
+
+@dataclass
+class Change:
+    dim: str
+    beta: str = ""
+    prod: str = ""
+    confirm: bool = False
+    lang: str = ""        # 非空 OR beta/prod 多行 → 渲染成 fenced code block
+
+
+@dataclass
+class ServiceChanges:
+    name: str
+    mr: str = ""                                  # 主 MR
+    changes: list[Change] = field(default_factory=list)
+    fix_mrs: list[str] = field(default_factory=list)   # 修复问题的 MR（可选）；放末尾保位置参数兼容
+
+
+@dataclass
+class ChangesDoc:
+    task: str
+    iteration: str
+    title: str
+    linear: list[str]
+    submit_branch: str
+    services: list[ServiceChanges] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "ChangesDoc":
+        svcs = []
+        for name, body in (d.get("services") or {}).items():
+            changes = [Change(dim=c["dim"], beta=c.get("beta", ""),
+                              prod=c.get("prod", ""), confirm=bool(c.get("confirm", False)),
+                              lang=c.get("lang", ""))
+                       for c in (body.get("changes") or [])]
+            svcs.append(ServiceChanges(name=name, mr=body.get("mr", ""),
+                                       fix_mrs=list(body.get("fix_mrs") or []),
+                                       changes=changes))
+        return cls(task=d["task"], iteration=d["iteration"], title=d.get("title", ""),
+                   linear=list(d.get("linear") or []), submit_branch=d.get("submit_branch", ""),
+                   services=svcs)

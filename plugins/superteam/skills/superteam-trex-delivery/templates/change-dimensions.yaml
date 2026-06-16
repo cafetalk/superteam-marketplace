@@ -1,0 +1,26 @@
+# trex-delivery release.md 的 schema: 22 个 canonical 部署变更维度 + 渲染列。
+# changes.yaml 的每个 dim 必须是下面 key 之一。顺序 = 渲染顺序 (照钉钉 excel)。
+columns: [变更项, beta, prod, 操作人, 检查]
+dimensions:
+  - {key: MSE配置, tier: auto, hint: "Nacos/MSE dataId+group+值"}
+  - {key: RDS DDL, tier: auto, hint: "建表/加字段/索引 DDL"}
+  - {key: RDS DML, tier: auto, hint: "数据修订 SQL, 注明行数+可重入"}
+  - {key: TableStore表, tier: auto, hint: "OTS 表名+主键"}
+  - {key: TableStore索引, tier: auto, hint: "二级/多元索引"}
+  - {key: Redis, tier: review, hint: "key 前缀/TTL/是否新实例"}
+  - {key: 其他云服务, tier: review, hint: "OSS/SLS/函数计算"}
+  - {key: 容器镜像, tier: auto, hint: "镜像 tag + 部署后置"}
+  - {key: 机器配置, tier: review, hint: "实例规格/副本数"}
+  - {key: JVM版本, tier: review, hint: "JDK 版本"}
+  - {key: JVM参数, tier: review, hint: "-Xmx/GC/启动参数"}
+  - {key: 监控配置, tier: review, hint: "告警/监控项阈值"}
+  - {key: 日志采集配置, tier: review, hint: "日志路径/采集规则"}
+  - {key: 内部LB端口, tier: review, hint: "内部 LB 端口"}
+  - {key: 内部LB地址, tier: review, hint: "内部 LB 后端地址"}
+  - {key: 外部LB端口, tier: review, hint: "对外端口"}
+  - {key: 外部LB地址, tier: review, hint: "域名/证书"}
+  - {key: K8s组件变更, tier: auto, hint: "Deployment/Service/ConfigMap"}
+  - {key: 调度任务, tier: auto, hint: "定时/cron 任务"}
+  - {key: MQ配置, tier: auto, hint: "topic/消费组/消息兼容"}
+  - {key: RPC服务兼容性, tier: auto, hint: "Dubbo/gRPC 是否向后兼容"}
+  - {key: 服务器终端脚本, tier: auto, hint: "实际 curl/SQL/sh"}

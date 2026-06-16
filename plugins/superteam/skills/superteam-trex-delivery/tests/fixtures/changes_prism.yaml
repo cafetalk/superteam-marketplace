@@ -1,0 +1,23 @@
+task: 260603_prism-v2
+iteration: 20260612-2b-onboarding-20
+title: PRISM Onboarding 2.0 后端
+linear: [TREX-524, TREX-545, TREX-627]
+submit_branch: review_260603_prism-v2
+services:
+  trex-hexagonal:
+    mr: "https://gitlab.com/Keccak256-evg/t-rex/backend-python/trex-hexagonal/-/merge_requests/49"
+    changes:
+      - {dim: 容器镜像, beta: "CI build + kubectl set image blue-trex-hexagonal -n drex-dev", prod: 同 beta}
+      - {dim: Redis, beta: "新 key prism:profile:<handle> (Layer1, 7d TTL)", prod: 同 beta}
+      - {dim: RPC服务兼容性, beta: "4 endpoint 全新, 集群内 BFF HTTP, 无破坏", prod: 同 beta}
+  trex-web:
+    mr: "https://gitlab.com/Keccak256-evg/t-rex/backend-java/trex-web/-/merge_requests/316"
+    changes:
+      - {dim: Redis, beta: "prism:rate_limit:* + prism:notify:dedup:* 新 key", prod: 同 beta}
+      - {dim: MSE配置, beta: "onboarding.lark.webhook-url(复用) + prism.rate-limit.*", prod: 同 beta, confirm: true}
+      - {dim: RPC服务兼容性, beta: "5 endpoint 全新, Bearer JWT", prod: 同 beta}
+  trex-core:
+    mr: "https://gitlab.com/Keccak256-evg/t-rex/backend-java/trex-core/-/merge_requests/284"
+    changes:
+      - {dim: 其他云服务, beta: "seed.json 字面值统一 enum code (DeFi→DEFI 等)", prod: 同 beta}
+      - {dim: RPC服务兼容性, beta: "advertiserIntelligence graphql 扩 32 字段 (additive 兼容)", prod: 同 beta}

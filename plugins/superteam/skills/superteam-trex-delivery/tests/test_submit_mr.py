@@ -71,3 +71,49 @@ def test_no_flags_does_not_call_open_mr(tmp_path, monkeypatch):
     assert rc == 0
     assert called == []        # 无 --repo → 不开 MR
     assert linear == []        # 也不动 Linear 状态
+
+
+def test_no_mr_with_repo_skips_handoff_mr(tmp_path, monkeypatch):
+    """Bug #2 regression：`--repo --no-mr` 时不该调 open_handoff_mr，
+    但 submission.md / per-repo 文件仍要写出（含 review_branch + 受影响系统）。"""
+    _stub_sources(monkeypatch)
+    monkeypatch.setattr(submit, "_git_remote_url",
+                        lambda repo: "git@gitlab.com:Keccak256-evg/t-rex/agentic/superteam.git")
+    monkeypatch.setattr(submit, "_read_gitlab_token", lambda: "tok")
+    called = []
+    monkeypatch.setattr(submit.gitlab_mr, "open_handoff_mr",
+                        lambda *a, **k: called.append(1) or {})
+    # team-lead 解析也不该被调（--no-mr 直接走 derive 路径）
+    reviewer_calls = []
+    monkeypatch.setattr(submit.gitlab_mr, "resolve_reviewer",
+                        lambda *a, **k: reviewer_calls.append(1) or "x")
+    # Linear 不该被动 — `--no-mr` 还没真正"开"提测，issue 不该置 In Review
+    linear = []
+    monkeypatch.setattr(submit, "_set_linear_in_review",
+                        lambda issue: linear.append(issue))
+    # trex-releases 侧 git：mock 掉
+    for fn in ("ensure_branch", "stage", "commit", "push"):
+        monkeypatch.setattr(submit.gitlab_release, fn, lambda *a, **k: None)
+    monkeypatch.setattr(submit.gitlab_release, "needs_confirm", lambda *a, **k: False)
+    # 释放记录 MR 也 mock 防止真调
+    release_mr_calls = []
+    monkeypatch.setattr(submit.gitlab_release, "open_mr",
+                        lambda *a, **k: release_mr_calls.append(1) or {})
+
+    rc = submit.run_cli([
+        "--dev-branch", "dev_260612_prism-v2",
+        "--issue", "TREX-1",
+        "--releases-root", str(tmp_path),
+        "--repo", "/ws/superteam",
+        "--no-mr", "--no-push"])
+    assert rc == 0
+    assert called == []             # 提测 MR 没开
+    assert reviewer_calls == []     # reviewer 解析也跳过
+    assert release_mr_calls == []   # 释放记录 MR 也没开（与 --no-mr 一致）
+    assert linear == []             # Linear issue 状态也不该被推到 In Review
+    sp = (tmp_path / "releases" / "20260611-world-cup" / "submissions"
+          / "260612_prism-v2" / "submission.md")
+    assert sp.exists()
+    txt = sp.read_text(encoding="utf-8")
+    assert "review_260612_prism-v2" in txt   # review 分支仍写入
+    assert "superteam" in txt                # 受影响系统 = repo

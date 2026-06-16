@@ -5,13 +5,15 @@ import argparse
 import json
 import re
 import sys
+import warnings
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gitlab_release                  # noqa
 from model import SystemChange         # noqa
-from render import render_release_auto, TPL  # noqa
+from render import render_release_auto, render_iteration_auto, TPL  # noqa
 from regions import merge_release      # noqa
+from changes import load_changes, validate_changes  # noqa
 
 
 def _section(text: str, heading: str) -> str:
@@ -78,6 +80,40 @@ def run(releases_root: Path, batch: str, dry_run: bool = False) -> Path:
     rp = bdir / "RELEASE.md"
     existing = rp.read_text(encoding="utf-8") if rp.exists() else None
     template = (TPL / "release.md.tmpl").read_text(encoding="utf-8").replace("{batch}", batch)
+    merged = merge_release(existing, auto, template)
+    if not dry_run:
+        rp.write_text(merged, encoding="utf-8")
+    return rp
+
+
+def run_v2(releases_root, iteration: str, dry_run: bool = False):
+    """v1.4.0: glob changes.yaml → render_iteration_auto → release.md (manual 区保留)。"""
+    bdir = Path(releases_root) / "releases" / iteration
+    if not bdir.exists():
+        raise FileNotFoundError(f"iteration 目录不存在: {bdir}")
+
+    docs = []
+    for cp in sorted(bdir.glob("submissions/*/changes.yaml")):
+        doc = load_changes(cp)
+        if doc.iteration != iteration:
+            raise SystemExit(
+                f"changes.yaml iteration 字段 '{doc.iteration}' != 路径 iteration '{iteration}' "
+                f"(文件: {cp})"
+            )
+        errs = validate_changes(doc, expected_iteration=iteration)
+        if errs:
+            raise SystemExit(f"changes.yaml 校验失败 ({cp}):\n" + "\n".join(f"  - {e}" for e in errs))
+        docs.append(doc)
+
+    # 孤儿检测：有 release.md 但无 changes.yaml 的子目录 → warn + skip
+    for sub in sorted(bdir.glob("submissions/*")):
+        if sub.is_dir() and (sub / "release.md").exists() and not (sub / "changes.yaml").exists():
+            warnings.warn(f"orphan submission dir (no changes.yaml): {sub} — skipped", stacklevel=2)
+
+    auto = render_iteration_auto(iteration, docs)
+    rp = bdir / "release.md"
+    existing = rp.read_text(encoding="utf-8") if rp.exists() else None
+    template = (TPL / "release.iteration.md.tmpl").read_text(encoding="utf-8").replace("{batch}", iteration)
     merged = merge_release(existing, auto, template)
     if not dry_run:
         rp.write_text(merged, encoding="utf-8")

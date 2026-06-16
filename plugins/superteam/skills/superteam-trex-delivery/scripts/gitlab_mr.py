@@ -35,6 +35,37 @@ def load_team_leads() -> dict:
     return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {"map": {}}
 
 
+def read_token() -> str:
+    """从 ~/.superteam/config 读 GITLAB_TOKEN（python 读 + split，-a 安全，不走 shell）。"""
+    cfg = Path.home() / ".superteam" / "config"
+    if not cfg.exists():
+        raise RuntimeError("未找到 ~/.superteam/config，无法读取 GITLAB_TOKEN")
+    for line in cfg.read_text(encoding="utf-8").splitlines():
+        if "GITLAB_TOKEN=" in line:
+            return line.split("GITLAB_TOKEN=", 1)[1].strip().strip('"').strip("'")
+    raise RuntimeError("~/.superteam/config 缺少 GITLAB_TOKEN")
+
+
+def create_mr(project_path: str, source: str, target: str, title: str,
+              description: str = "", token: str | None = None) -> dict:
+    """用 GitLab REST API 建 MR（不依赖 glab CLI）；同源同目标已开则复用。失败不抛。"""
+    try:
+        token = token or read_token()
+        enc = urllib.parse.quote(project_path, safe="")
+        mr = _api("POST", f"/projects/{enc}/merge_requests", token, ok_codes=(200, 201, 409),
+                  body={"source_branch": source, "target_branch": target,
+                        "title": title, "description": description})
+        if not mr.get("web_url"):
+            existing = _api("GET", f"/projects/{enc}/merge_requests"
+                            f"?source_branch={urllib.parse.quote(source)}"
+                            f"&target_branch={urllib.parse.quote(target)}&state=opened", token)
+            if existing:
+                mr = existing[0]
+        return {"ok": bool(mr.get("web_url")), "web_url": mr.get("web_url", ""), "iid": mr.get("iid")}
+    except Exception as e:   # 跨 repo 失败隔离：不抛，返回结构化结果
+        return {"ok": False, "web_url": "", "error": str(e)}
+
+
 # ---------------------------------------------------------------------------
 # GitLab REST IO （测试 mock `_api`，不打真接口）
 # ---------------------------------------------------------------------------

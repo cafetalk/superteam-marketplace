@@ -62,14 +62,13 @@ def push(repo: Path, branch: str) -> None:
 
 
 def open_mr(repo: Path, source: str, target: str, title: str) -> dict:
-    """建 MR；失败不抛（跨 repo 失败隔离），返回结构化结果供汇总。"""
+    """建 MR；用 GitLab REST API + ~/.superteam/config 的 token（不依赖 glab CLI）。
+    从 repo 的 origin remote 解析 GitLab project path。失败不抛（跨 repo 失败隔离），返回结构化结果。"""
+    import gitlab_mr
     try:
-        res = subprocess.run(
-            ["glab", "mr", "create", "-R", str(repo), "--source-branch", source,
-             "--target-branch", target, "--title", title, "--fill", "--yes"],
-            capture_output=True, text=True, timeout=120)
-    except (FileNotFoundError, OSError) as e:   # glab 未安装 / 不可执行 —— 不抛，记录原因
-        return {"ok": False, "output": "", "error": f"glab 不可用: {e}"}
-    return {"ok": res.returncode == 0,
-            "output": (res.stdout or "").strip(),
-            "error": (res.stderr or "").strip() if res.returncode != 0 else ""}
+        remote = _git(repo, "remote", "get-url", "origin")
+        project_path = gitlab_mr.parse_project_path(remote)
+    except Exception as e:
+        return {"ok": False, "web_url": "", "error": f"解析 project path 失败: {e}"}
+    return gitlab_mr.create_mr(project_path, source, target, title,
+                               description="由 superteam-trex-delivery 自动生成的发布/提测记录 MR。")
