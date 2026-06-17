@@ -1,92 +1,135 @@
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-from render import render_change_table  # noqa
-from model import Change  # noqa
+from render import render_change_table, render_service_release, render_submission_release, render_iteration_auto  # noqa
+from render import render_placeholder_table, render_data_contract, _redis_table  # noqa
+from model import Change, ServiceChanges, ChangesDoc  # noqa
+from changes import load_changes  # noqa
+
+FIX = Path(__file__).resolve().parent / "fixtures" / "changes_prism.yaml"
 
 
-def test_change_table_simple_rows_and_code_blocks():
-    rows = [
-        Change("容器镜像", "CI build", "同 beta"),                       # 单行 → 表格
-        Change("Redis", "新 key prism:profile", "同 beta", confirm=True), # 单行 → 表格
-        Change("MSE配置", "web.prism-base-url=http://x\nrate.enabled=true",  # 多行 → 代码块
-               "同 beta", lang="properties"),
-        Change("服务器终端脚本", "curl -X POST ...\n  -d '{}'", "同 beta", lang="bash"),
-    ]
-    md = render_change_table(rows)
-    assert "| 变更项 | beta | prod | 操作人 | 检查 |" in md
-    assert "容器镜像" in md and "Redis" in md
-    assert "RDS DDL" not in md                       # 没列的不出现
-    assert "⚠️" in md                                # confirm:true 标记
-    assert "#### MSE配置" in md and "```properties" in md
-    assert "rate.enabled=true" in md                 # 多行内容原样, 不 <br>
-    assert "#### 服务器终端脚本" in md and "```bash" in md
-    assert "<br>" not in md                          # 多行不被压平进 cell
-
+# ---------------------------------------------------------------------------
+# render_change_table
+# ---------------------------------------------------------------------------
 
 def test_change_table_empty():
     assert "无涉及维度" in render_change_table([])
 
 
-from render import render_service_release, render_submission_release  # noqa
-from changes import load_changes  # noqa
-FIX = Path(__file__).resolve().parent / "fixtures" / "changes_prism.yaml"
+def test_change_table_single_value_and_br():
+    md = render_change_table([
+        Change("容器镜像", "build → restart"),
+        Change("MSE配置", "a=1\nb={x}", confirm=True),
+    ])
+    assert "| 变更项 | 内容 | 操作人 | 检查 |" in md
+    assert "| 容器镜像 | build → restart |  | ☐ |" in md
+    assert "| MSE配置 ⚠️ | a=1<br>b={x} |  | ☐ |" in md   # 多行 <br>，confirm ⚠️
+    assert "####" not in md and "```" not in md           # 不再有代码块
 
+
+# ---------------------------------------------------------------------------
+# render_placeholder_table
+# ---------------------------------------------------------------------------
+
+def test_placeholder_table():
+    none = render_placeholder_table([Change("Redis", "无额外操作")])
+    assert none == []                                  # 无占位符 → 空
+    lines = render_placeholder_table([
+        Change("MSE配置", "x={lark}", placeholders=[
+            {"key": "lark", "dev": "d", "beta": "b", "prod": "p"}])])
+    txt = "\n".join(lines)
+    assert "`{}` = 按环境取值" in txt
+    assert "| key | dev | beta | prod |" in txt
+    assert "| lark | d | b | p |" in txt
+
+
+# ---------------------------------------------------------------------------
+# render_data_contract / _redis_table
+# ---------------------------------------------------------------------------
+
+def test_data_contract_redis():
+    assert render_data_contract(ServiceChanges("svc")) == []      # 无契约 → 空
+    svc = ServiceChanges("svc", data_contract={"redis_keys": [
+        {"key": "prism:profile:<h>", "purpose": "cache", "ttl": "7d"}]})
+    lines = render_data_contract(svc)
+    txt = "\n".join(lines)
+    assert "# 数据契约" in txt and "## Redis Keys" in txt
+    assert "| Key 模式 | 用途 | TTL |" in txt
+    assert "| prism:profile:<h> | cache | 7d |" in txt
+    # _redis_table 只出表、无标题（供 #2/#3 复用）
+    assert _redis_table(svc.data_contract["redis_keys"])[0] == "| Key 模式 | 用途 | TTL |"
+
+
+# ---------------------------------------------------------------------------
+# render_service_release — fixture-driven
+# ---------------------------------------------------------------------------
 
 def test_service_release_single_service():
     doc = load_changes(FIX)
-    md = render_service_release(doc, "trex-hexagonal")
-    assert "trex-hexagonal" in md and "260603_prism-v2" in md
-    assert "trex-web" not in md          # 只该服务
+    md = render_service_release(doc, "trex-web")
+    assert "trex-web" in md and "260603_prism-v2" in md
+    assert "trex-core" not in md
+    assert "| lark.webhook-url | （复用 v1，空） | （复用 v1，空） | 待 ops 配 |" in md
+    assert "# 数据契约" in md and "prism:rate_limit:*" in md
 
+
+# ---------------------------------------------------------------------------
+# render_service_release — full v1.5 (inline doc)
+# ---------------------------------------------------------------------------
+
+def test_service_release_full_v15():
+    doc = ChangesDoc("260603_x", "it-1", "T", ["TREX-1"], "review_260603_x",
+                     services=[ServiceChanges(
+                         "trex-web", "MR-MAIN",
+                         changes=[Change("MSE配置", "a=1\nx={lark}", confirm=True,
+                                         placeholders=[{"key": "lark", "dev": "d", "beta": "b", "prod": "p"}]),
+                                  Change("Redis", "无额外操作（key 见数据契约）")],
+                         data_contract={"redis_keys": [
+                             {"key": "prism:profile:<h>", "purpose": "cache", "ttl": "7d"}]})])
+    md = render_service_release(doc, "trex-web")
+    # 章节顺序：变更项 → 数据契约 → 提测代码 → 关联任务
+    assert md.index("# 变更项") < md.index("# 数据契约") < md.index("# 提测代码") < md.index("# 关联任务")
+    assert "a=1<br>x={lark}" in md
+    assert "| lark | d | b | p |" in md
+    assert "## Redis Keys" in md and "prism:profile:<h>" in md
+    assert "主 MR：MR-MAIN" in md
+    assert "[TREX-1](https://linear.app/t-rex-v1/issue/TREX-1)" in md
+
+
+# ---------------------------------------------------------------------------
+# render_submission_release — fixture-driven
+# ---------------------------------------------------------------------------
 
 def test_submission_release_all_services():
-    doc = load_changes(FIX)
-    md = render_submission_release(doc)
+    md = render_submission_release(load_changes(FIX))
     for s in ("trex-hexagonal", "trex-web", "trex-core"):
         assert f"## {s}" in md
-    assert "TREX-524" in md
+    assert "[TREX-524](https://linear.app/t-rex-v1/issue/TREX-524)" in md
+    assert "## trex-web · Redis Keys" in md
 
 
-from render import render_iteration_auto  # noqa
-
+# ---------------------------------------------------------------------------
+# render_iteration_auto — fixture-driven
+# ---------------------------------------------------------------------------
 
 def test_iteration_auto_master_and_detail():
-    doc = load_changes(FIX)
-    auto = render_iteration_auto("20260612-2b-onboarding-20", [doc])
+    auto = render_iteration_auto("20260612-2b-onboarding-20", [load_changes(FIX)])
     assert "系统变更总表" in auto and "各系统详细变更" in auto
-    assert "trex-hexagonal" in auto and "trex-web" in auto
-    assert "260603_prism-v2" in auto
+    assert "# 数据契约" in auto and "## trex-hexagonal · Redis Keys" in auto
+    assert auto.index("# 变更项") < auto.index("# 数据契约") < auto.index("# 提测代码") < auto.index("# 关联任务")
 
 
-def test_service_release_three_sections_and_fix_mrs():
-    import sys
-    from pathlib import Path
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-    from model import ChangesDoc, ServiceChanges, Change
-    import render
-    doc = ChangesDoc("260612_x", "20260612-it", "标题", ["TREX-1", "TREX-2"], "review_260612_x",
-                     services=[ServiceChanges("trex-core", "MR-MAIN",
-                                              [Change("容器镜像", "build", "同 beta")],
-                                              fix_mrs=["MR-FIX-1", "MR-FIX-2"])])
-    md = render.render_service_release(doc, "trex-core")
-    # 三章节
-    assert "# 变更项" in md and "# 提测代码" in md and "# 关联任务" in md
-    # 提测代码：分支 + 主MR + 修复MR
-    assert "提测分支：`review_260612_x`" in md
-    assert "主 MR：MR-MAIN" in md
-    assert "修复问题的 MR：" in md and "MR-FIX-1" in md and "MR-FIX-2" in md
-    # 关联任务：迭代 + 任务列表
-    assert "迭代：`20260612-it`" in md and "- TREX-1" in md and "- TREX-2" in md
+# ---------------------------------------------------------------------------
+# iteration_url renders as link
+# ---------------------------------------------------------------------------
 
-
-def test_service_release_no_fix_mrs_shows_none():
-    import sys
-    from pathlib import Path
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-    from model import ChangesDoc, ServiceChanges, Change
-    import render
-    doc = ChangesDoc("260612_x", "20260612-it", "T", ["TREX-1"], "review_260612_x",
-                     services=[ServiceChanges("svc", "MR-MAIN", [Change("Redis", "k", "同 beta")])])
-    md = render.render_service_release(doc, "svc")
-    assert "修复问题的 MR：无" in md
+def test_iteration_url_renders_as_link():
+    url = "https://linear.app/t-rex-v1/project/x"
+    doc = ChangesDoc("t", "it-1", "T", ["TREX-1"], "review_260603_x",
+                     services=[ServiceChanges("svc", "M", changes=[Change("Redis", "无")])],
+                     iteration_url=url)
+    md = render_service_release(doc, "svc")
+    assert f"迭代：[it-1]({url})" in md
+    auto = render_iteration_auto("it-1", [doc])
+    assert f"迭代：[it-1]({url})" in auto

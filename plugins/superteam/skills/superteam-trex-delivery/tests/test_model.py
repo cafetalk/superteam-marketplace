@@ -34,14 +34,38 @@ def test_changesdoc_from_dict_roundtrip():
     d = {"task": "260603_prism-v2", "iteration": "20260612-x", "title": "T",
          "linear": ["TREX-1"], "submit_branch": "review_260603_prism-v2",
          "services": {"trex-hexagonal": {"mr": "u",
-            "changes": [{"dim": "Redis", "beta": "b", "prod": "同 beta", "confirm": True}]}}}
+            "changes": [{"dim": "Redis", "value": "b", "confirm": True}]}}}
     doc = ChangesDoc.from_dict(d)
     assert doc.task == "260603_prism-v2"
     assert doc.services[0].name == "trex-hexagonal"
     assert doc.services[0].changes[0].dim == "Redis"
     assert doc.services[0].changes[0].confirm is True
 
-def test_change_lang_field_default_and_set():
-    from model import Change
-    assert Change("MSE配置", "x", "y").lang == ""
-    assert Change("MSE配置", "x", "y", lang="properties").lang == "properties"
+def test_changesdoc_v15_schema():
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+    from model import ChangesDoc
+    d = {
+        "task": "t", "iteration": "it", "title": "T", "linear": ["TREX-1"],
+        "submit_branch": "review_260603_x",
+        "services": {
+            "svc": {
+                "mr": "M",
+                "changes": [
+                    {"dim": "容器镜像", "value": "build"},
+                    {"dim": "MSE配置", "confirm": True,
+                     "value": "a=1\nb={x}",
+                     "placeholders": [{"key": "x", "dev": "d", "beta": "b", "prod": "p"}]},
+                ],
+                "data_contract": {"redis_keys": [
+                    {"key": "k:<h>", "purpose": "cache", "ttl": "7d"}]},
+            }
+        },
+    }
+    doc = ChangesDoc.from_dict(d)
+    svc = doc.services[0]
+    assert svc.changes[0].value == "build"
+    assert svc.changes[1].confirm is True
+    assert svc.changes[1].placeholders == [{"key": "x", "dev": "d", "beta": "b", "prod": "p"}]
+    assert svc.data_contract["redis_keys"][0]["ttl"] == "7d"

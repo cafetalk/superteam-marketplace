@@ -12,13 +12,22 @@ def test_record_branch_name_rule_compliant():
     rule = re.compile(r"(((pre|auto|dev|alpha|beta|feature|hotfix|review)"
                       r"(|_(\d{8}|\d{6}|\d{4})_[\.A-Za-z0-9\-]{2,30}))|^dev$|^beta$|^master$|^main$)")
     b1 = gr.record_branch_name("20260605-world-cup")
-    assert b1 == "auto_20260605_world-cup" and rule.fullmatch(b1)
+    assert b1 == "dev_20260605_world-cup" and rule.fullmatch(b1)
     # 中文 slug → keyword 清成 ASCII，仍合规
     b2 = gr.record_branch_name("20260604-campaign抽象大改动")
-    assert b2 == "auto_20260604_campaign" and rule.fullmatch(b2)
+    assert b2 == "dev_20260604_campaign" and rule.fullmatch(b2)
     # 纯中文 slug → 兜底 keyword，仍合规
     b3 = gr.record_branch_name("20260604-世界杯")
     assert rule.fullmatch(b3)
+
+
+def test_dev_branch_of_reuses_round_branch():
+    # review_* → dev_*（本轮公共 dev 分支名，与各微服务仓一致）
+    assert gr.dev_branch_of("review_260603_prism-v2", "20260612-2b-onboarding-20") == "dev_260603_prism-v2"
+    # 已是 dev_* 原样
+    assert gr.dev_branch_of("dev_260603_prism-v2", "x") == "dev_260603_prism-v2"
+    # 空 submit_branch → 退回 iteration 派生
+    assert gr.dev_branch_of("", "20260605-world-cup") == "dev_20260605_world-cup"
 
 
 def test_stage_uses_explicit_paths(monkeypatch):

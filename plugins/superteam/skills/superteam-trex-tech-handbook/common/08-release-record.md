@@ -19,43 +19,55 @@ releases/<batch>/<TREX-id>/handoff.md       ← 单个工程师的提测单（ha
 ```
 
 - **Linear issue comment 只留链接**，指向 `trex-releases` 里对应的 `handoff.md`；记录正文不再 paste 在 comment 里。
-- 各业务 repo（如 `persona-feast` / `drex-core`）落 per-repo 改动明细 `releases/<batch>/<TREX-id>.md`，与 `trex-releases` 的提测单互链。skill 把该文件写进业务 repo **工作区**，由工程师**随代码在 `review_*` 分支一起提交**；skill 只自动 commit/push `trex-releases`，不替业务 repo push。
+- 各业务 repo（如 `persona-feast` / `drex-core`）落 per-repo 改动明细 `releases/<batch>/<TREX-id>.md`，与 `trex-releases` 的提测单互链。skill 把该文件写进业务 repo **工作区**，由工程师**随代码在 `dev_*` 分支一起提交**（提测 MR `dev_*→review_*` 携带它进 review）；skill 只自动 commit/push `trex-releases`，不替业务 repo push。
 - 钉钉 `.axls` 表格 **停止维护**；历史最近 2 个批次由 `backfill` 一次性回迁进 `trex-releases`。
 
 ## SOP【强制】
 
+记录仓 **镜像代码生命周期**：提测期记录走 `dev_*→review_*`（不进 master），发布时才 `beta_*→master`。
+`trex-releases/master` = 已发布记录的唯一真相。
+
 ```text
-[提测阶段]  per Linear issue
-  研发助手跑 handoff --issue TREX-<id> --releases-root <trex-releases clone>
+[提测阶段]  per submission（一个 dev 分支 / 一个微服务，可关联多 issue）
+  填 changes.yaml → submit --changes <...> --releases-root <clone> --repo-map <svc>=<path>
         │
         ▼
-  生成 releases/<batch>/<TREX-id>/handoff.md（含 7 字段 + 受影响系统矩阵骨架）
-  + 各业务 repo 工作区的 per-repo 明细（工程师随代码在 review_* 一起提交）
-        │  人工补充：变更范围 / 自测记录 / 回滚预案 / 系统变更维度
+  渲染 #1 各服务 release.md（落服务 repo 工作区，随代码在 dev_* 提交，提测 MR dev_→review_ 携带）
+  + #2 submissions/<task>/release.md（落 trex-releases）
+        │  记录提交在本轮公共 dev_<date>_<name> 分支
         ▼
-  Linear issue comment 贴 handoff.md 链接
+  记录 MR：dev_<date>_<name> → review_<date>_<name>（与代码提测同名同拍，不进 master）
 
 [发布阶段]  per 批次（一次 prod 发布）
-  研发负责人跑 aggregate --batch <batch> --releases-root <...>
+  release --batch <iteration> --beta beta_<date>_<keyword> --releases-root <...>
         │
         ▼
-  汇总本批所有 handoff.md → releases/<batch>/RELEASE.md
-  （auto 区 = 系统变更总表 + 各系统明细 + 提测单索引，重生成；
-    manual 区 = 版本号 / 灰度 / 回滚 checklist，人工填，重跑保留）
+  汇总本批 changes.yaml → releases/<iteration>/release.md
+  （AUTO 区 = 变更项/提测代码/关联任务，重生成；# 发布执行 manual 区人工填、重跑保留）
+        │
+        ▼
+  记录 MR：beta_<date>_<keyword> → master（与代码发布 beta→master 同拍）
 ```
+
+### 提测产出 = 两个平级文件【强制】
+
+- `release.md` — skill 从 `changes.yaml` 渲染（变更项/数据契约/提测代码/关联任务），勿手改。
+- `submission.md` — **dev agent 手写**，承载 release.md 没有的提测信息，章节：
+  `字段表（提测人/Linear/提测分支/主MR）` · `# 变更范围` · `# 关联 MR` · `# 自测记录` · `# 回滚预案` · `# 测试同学关注点`。
+  与 release.md 同目录、同 `dev_*` 分支随代码提交，提测 MR `dev_→review_` 携带。
 
 ## 维度矩阵【强制】
 
 受影响系统 / 部署变更**只列本次实际涉及的维度**（替代钉钉每系统 sheet 的 20 行全量矩阵）。
 20 个 canonical 维度清单 + 填写说明见 skill 的 `references/dimensions.md`。
-每个维度填 `beta` / `prod` 两列 + 操作人 + 检查（☐/☑）。
+每个维度填单一「内容」列（按环境取值用 `{placeholder}`，表后渲占位符取值表 `key/dev/beta/prod`）+ 操作人 + 检查（☐/☑）。
 
 ## git 安全栏【强制】
 
 `superteam-trex-delivery` 跨 repo 写记录，遵守仓库 git 纪律：
 
 1. **显式 stage**：永不 `git add -A` / `git add .` / `git add -u`；只 stage 明确的记录文件
-2. **首建批次记录分支需确认**：第一次为某批次建 `auto_<date>_<keyword>` 记录分支时，打印 diff 等人确认（`--yes` 跳过）
+2. **记录分支 = 本轮公共 dev 分支名**：`trex-releases` 的记录提交用本轮的 `dev_<date>_<name>`（从 submit_branch `review_*` 派生，与各微服务仓分支名一致，见 `common/03`〔跨服务分支命名〕），不再另造 `auto_*`。首建该分支时打印 diff 等人确认（`--yes` 跳过）
 3. **`--dry-run` 预览**：只本地生成 markdown 供预览，不做任何 git
 4. **跨 repo 失败隔离**：某业务 repo per-repo 明细写失败只记入结果，不中断其余 repo（业务 repo 由工程师自行提交，skill 不 push 它们）
 

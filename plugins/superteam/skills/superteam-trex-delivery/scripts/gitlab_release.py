@@ -8,14 +8,28 @@ from pathlib import Path
 
 
 def record_branch_name(batch: str) -> str:
-    """trex-releases 记录分支名，合规于 t-rex push rule：`auto_<date>_<keyword>`。
-    `auto` 前缀在白名单内；keyword 取 batch 的 slug 段并清成 ASCII（规则 name 段不含 / 与中文）。
-    batch 形如 <date>-<slug>（如 20260605-world-cup / 20260604-campaign抽象大改动）。"""
+    """trex-releases 记录分支名（**仅 fallback** —— 无当次开发分支时按 iteration 派生）。
+    合规于 t-rex push rule：`dev_<date>_<keyword>`（dev 前缀在白名单内；keyword 取 batch 的
+    slug 段清成 ASCII，规则 name 段不含 / 与中文）。batch 形如 <date>-<slug>。
+    正常路径用 `dev_branch_of(submit_branch, batch)`：复用本轮**公共 dev 分支名**，
+    让 trex-releases 与各微服务仓分支名一致（见 handbook common/03〔多服务分支同名建议〕）。"""
     date, _, slug = batch.partition("-")
     kw = re.sub(r"[^A-Za-z0-9-]", "", slug)[:30] or "rec"
     if len(kw) < 2:
         kw = (kw + "rec")[:30]
-    return f"auto_{date}_{kw}"
+    return f"dev_{date}_{kw}"
+
+
+def dev_branch_of(submit_branch: str, batch: str) -> str:
+    """本轮记录分支 = 本轮**公共 dev 分支名**。
+    submit_branch 形如 `review_<date>_<name>`（与 dev_* 名字对齐，见 common/03）→ 换 `dev_<date>_<name>`；
+    已是 `dev_*` 原样用；都不是则退回按 iteration 派生（`record_branch_name`）。"""
+    sb = (submit_branch or "").strip()
+    if sb.startswith("review_"):
+        return "dev_" + sb[len("review_"):]
+    if sb.startswith("dev_"):
+        return sb
+    return record_branch_name(batch)
 
 
 def _git(repo: Path, *args: str) -> str:

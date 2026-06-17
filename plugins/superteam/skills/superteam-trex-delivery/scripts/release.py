@@ -124,6 +124,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="汇总批次发布文档")
     p.add_argument("--batch", required=True)
     p.add_argument("--releases-root", required=True)
+    p.add_argument("--beta", default=None,
+                   help="发布用 beta 分支名 beta_<date>_<keyword>；发布记录走 beta → master（镜像代码发布）。缺省退回 dev_<batch> fallback。")
     p.add_argument("--yes", action="store_true", help="跳过首建批次分支的确认闸，直接 push")
     p.add_argument("--no-push", action="store_true", help="只本地 commit，不 push")
     p.add_argument("--no-mr", action="store_true", help="push 但不开 MR")
@@ -137,19 +139,20 @@ def run_cli(argv=None):
     rp = run(root, args.batch, dry_run=args.dry_run)
     result = {"release": str(rp), "dry_run": args.dry_run, "written": not args.dry_run}
     if not args.dry_run:
-        branch = gitlab_release.record_branch_name(args.batch)
+        # 发布记录走 beta_<date>_<keyword> → master（镜像代码发布）；缺 --beta 退回 dev_<batch> fallback
+        branch = args.beta if args.beta else gitlab_release.record_branch_name(args.batch)
         relpath = str(rp.relative_to(root)) if rp.is_absolute() else str(rp)
         gitlab_release.ensure_branch(root, branch)
         gitlab_release.stage(root, [relpath])
         gitlab_release.commit(root, f"release: 汇总发布文档 {args.batch}")
         if gitlab_release.needs_confirm(root, branch, assume_yes=args.yes):
-            result["confirm_required"] = True            # 首建批次分支：打印 diff，等人确认，不 push
+            result["confirm_required"] = True            # 首建分支：打印 diff，等人确认，不 push
             print(gitlab_release._git(root, "log", "-1", "--stat"))
         elif not args.no_push:
             gitlab_release.push(root, branch)
             if not args.no_mr:
                 result["mr"] = gitlab_release.open_mr(root, branch, "master",
-                                                      f"release: 汇总发布 {branch}")
+                                                      f"发布: {branch} → master")
     print(json.dumps(result, ensure_ascii=False))
     return 0
 

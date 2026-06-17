@@ -1,6 +1,6 @@
 # trex-delivery release.md 的 schema: 22 个 canonical 部署变更维度 + 渲染列。
 # changes.yaml 的每个 dim 必须是下面 key 之一。顺序 = 渲染顺序 (照钉钉 excel)。
-columns: [变更项, beta, prod, 操作人, 检查]
+columns: [变更项, 内容, 操作人, 检查]
 dimensions:
   - {key: MSE配置, tier: auto, hint: "Nacos/MSE dataId+group+值"}
   - {key: RDS DDL, tier: auto, hint: "建表/加字段/索引 DDL"}

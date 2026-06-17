@@ -52,6 +52,10 @@ def create_mr(project_path: str, source: str, target: str, title: str,
     try:
         token = token or read_token()
         enc = urllib.parse.quote(project_path, safe="")
+        # 确保目标分支存在（review_*/beta_* 首次可能还没建）→ 从 master 切；已存在 GitLab 返 400
+        if target not in ("master", "main"):
+            _api("POST", f"/projects/{enc}/repository/branches"
+                 f"?branch={urllib.parse.quote(target)}&ref=master", token, ok_codes=(200, 201, 400))
         mr = _api("POST", f"/projects/{enc}/merge_requests", token, ok_codes=(200, 201, 409),
                   body={"source_branch": source, "target_branch": target,
                         "title": title, "description": description})

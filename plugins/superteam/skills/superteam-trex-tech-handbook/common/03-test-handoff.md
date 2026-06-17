@@ -60,6 +60,14 @@
 3. **review_<date>_<name> 是审核通过快照**，merge 后由 QA 整合接管；研发不主动改动 review_* 分支
 4. **bug 回流不开新 issue**：QA 在 beta env 发现 bug → 原开发者在 `dev_<date>_<name>` 修 → 走 §bug 回流 SOP
 
+## 跨服务分支命名【推荐】
+
+一次开发**同时改多个微服务**时，**建议各服务用同一个 `dev_<date>_<name>` 分支名**（不做硬性要求，但建议一致）。
+
+- 好处：一个分支名就能在所有相关仓里定位本轮全部改动；review_* / commit / MR 一一对应；可读、可追溯。
+- 正例（PRISM 跨 3 仓）：`trex-hexagonal` / `trex-web` / `trex-core` 都用 `dev_260603_prism-v2`。
+- 这个**公共 dev 分支名**也就是 `superteam-trex-delivery` 在 `trex-releases` 里**这次提交所用的记录分支名**（见 `common/08`）—— 记录仓与各微服务仓分支名保持一致，不再另造 `auto_*` 名。
+
 ## 自检（建 MR 前）
 
 完整 9 大组 / 35+ 项 Code review 自检 checklist 见 `common/06-development-flow.md` §6。

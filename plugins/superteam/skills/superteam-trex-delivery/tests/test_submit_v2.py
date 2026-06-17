@@ -23,6 +23,21 @@ def test_submit_changes_renders_two_levels(tmp_path):
           / "260603_prism-v2" / "release.md")
     assert sr.exists() and "trex-hexagonal" in sr.read_text(encoding="utf-8")
 
+def test_submit_changes_record_mr_targets_review(tmp_path, monkeypatch):
+    """提测记录 MR 走 dev_<date>_<name> → review_<date>_<name>（不进 master）。"""
+    import submit
+    root, cp = _seed(tmp_path)
+    calls = {}
+    for fn in ("ensure_branch", "stage", "commit", "push"):
+        monkeypatch.setattr(submit.gitlab_release, fn, lambda *a, **k: None)
+    monkeypatch.setattr(submit.gitlab_release, "open_mr",
+                        lambda repo, src, tgt, title: calls.update(src=src, tgt=tgt) or {"ok": True, "web_url": "u"})
+    submit_from_changes(cp, root, repo_map={}, no_mr=False, no_push=False)
+    # fixture submit_branch=review_260603_prism-v2 → dev_260603_prism-v2 → review_260603_prism-v2
+    assert calls["src"] == "dev_260603_prism-v2"
+    assert calls["tgt"] == "review_260603_prism-v2"   # 不是 master
+
+
 def test_submit_changes_aborts_on_bad_dim(tmp_path):
     root, cp = _seed(tmp_path)
     cp.write_text(cp.read_text(encoding="utf-8").replace("Redis", "不存在的维度", 1), encoding="utf-8")

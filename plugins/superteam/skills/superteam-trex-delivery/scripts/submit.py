@@ -81,7 +81,7 @@ def submit_from_changes(changes_path, releases_root, repo_map: dict[str, str],
             result["warnings"].append(f"[{svc.name}] 写 #1 文件失败: {e}")
 
     # git: 只处理 trex-releases 侧的 #2 文件（与现有 write_records 行为一致）
-    # 服务 repo 侧的 #1 文件由工程师随代码在 review_* 分支一起提交
+    # 服务 repo 侧的 #1 文件由工程师随代码在 dev_* 分支一起提交（提测 MR dev_→review_ 携带它）
     if not dry_run and not no_push:
         relpaths = []
         try:
@@ -89,15 +89,18 @@ def submit_from_changes(changes_path, releases_root, repo_map: dict[str, str],
         except ValueError:
             pass
         if relpaths:
-            branch = gitlab_release.record_branch_name(iteration)
+            # 记录分支 = 本轮公共 dev 分支名（与各微服务仓一致），从 submit_branch 派生
+            branch = gitlab_release.dev_branch_of(doc.submit_branch, iteration)
             trailers = "\n".join(f"Tracks Linear {i}" for i in doc.linear)
             gitlab_release.ensure_branch(releases_root, branch)
             gitlab_release.stage(releases_root, relpaths)
             gitlab_release.commit(releases_root, f"release: changes 记录 {task}\n\n{trailers}")
             gitlab_release.push(releases_root, branch)
             if not no_mr:
+                # 提测记录 MR 走 dev_<date>_<name> → review_<date>_<name>（镜像代码提测；不进 master）
+                review = doc.submit_branch or (("review_" + branch[len("dev_"):]) if branch.startswith("dev_") else "master")
                 result["release_record_mr"] = gitlab_release.open_mr(
-                    releases_root, branch, "master", f"release: 记录 {branch}")
+                    releases_root, branch, review, f"提测记录: {branch} → {review}")
 
     return result
 
@@ -139,7 +142,7 @@ def write_records(dev_branch: str, issues: list[str], releases_root: Path, batch
     """生成 trex-releases 的 submission.md + （MR 模式下）该微服务 repo 的 per-repo 明细。
     返回**预期写入文件的绝对路径列表**（run_cli 据此算相对 releases_root 的 relpath 来 stage）。
     dry_run=True 时只计算路径、不落盘（与 spec §9「不落盘」一致）。
-    per-repo 明细写进业务 repo 工作区但**不在此提交**：由工程师随代码在 review_* 分支一起提交
+    per-repo 明细写进业务 repo 工作区但**不在此提交**：由工程师随代码在 dev_* 分支一起提交（提测 MR dev_→review_ 携带它）
     （trex-releases 侧才由本 skill 自动 commit/push）。某 repo 写失败只记入
     result['repos'][name]，不中断其余（跨 repo 失败隔离）。"""
     tr, resolved = build(dev_branch, issues, batch, date)
@@ -175,9 +178,9 @@ def write_records(dev_branch: str, issues: list[str], releases_root: Path, batch
                     render_repo_change(repo_name, tr, resolved, handoff_link), encoding="utf-8")
             written.append(rp)
             if result is not None:
-                # 提示：该文件落在业务 repo 工作区，需工程师随代码在 review_* 分支一起提交
+                # 提示：该文件落在业务 repo 工作区，需工程师随代码在 dev_* 分支一起提交
                 result.setdefault("repos", {})[repo_name] = {
-                    "ok": True, "path": str(rp), "note": "请随代码在 review_* 分支提交此文件"}
+                    "ok": True, "path": str(rp), "note": "请随代码在 dev_* 分支提交此文件（提测 MR dev_→review_ 携带）"}
         except Exception as e:   # 单 repo 写失败不影响其余
             if result is not None:
                 result.setdefault("repos", {})[repo_name] = {"ok": False, "error": str(e)}
@@ -312,7 +315,8 @@ def run_cli(argv=None):
     relpaths = [str(p.relative_to(root)) for p in written if _under(p, root)]
     result["written"] = [str(w) for w in written]
     if not args.dry_run and relpaths:
-        branch = gitlab_release.record_branch_name(_batch_of(written))
+        # 记录分支 = 本轮 dev 分支名（v1 直接有 --dev-branch）
+        branch = args.dev_branch if args.dev_branch else gitlab_release.record_branch_name(_batch_of(written))
         trailers = "\n".join(f"Tracks Linear {i}" for i in issues)
         gitlab_release.ensure_branch(root, branch)
         gitlab_release.stage(root, relpaths)
@@ -323,8 +327,10 @@ def run_cli(argv=None):
         elif not args.no_push:
             gitlab_release.push(root, branch)
             if not args.no_mr:
+                # 提测记录 MR 走 dev_<date>_<name> → review_<date>_<name>（镜像代码提测；不进 master）
+                review = ("review_" + branch[len("dev_"):]) if branch.startswith("dev_") else "master"
                 result["release_record_mr"] = gitlab_release.open_mr(
-                    root, branch, "master", f"release: 记录 {branch}")
+                    root, branch, review, f"提测记录: {branch} → {review}")
     # MR 模式：把每个关联 Linear issue 置 In Review（逐个 best-effort，失败只告警不阻断）。
     # --no-mr 时跳过：没真开 MR 就不该把 issue 推到 In Review（语义错位）。
     if mr_override and not args.dry_run and not args.no_mr:

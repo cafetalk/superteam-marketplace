@@ -48,18 +48,18 @@ class TaskRecord:        # 一次提测(submission)：一个 dev 分支 / 一个
 @dataclass
 class Change:
     dim: str
-    beta: str = ""
-    prod: str = ""
+    value: str = ""                                  # 单值，可多行（渲染时 \n → <br>）
     confirm: bool = False
-    lang: str = ""        # 非空 OR beta/prod 多行 → 渲染成 fenced code block
+    placeholders: list[dict] = field(default_factory=list)   # [{key,dev,beta,prod}]
 
 
 @dataclass
 class ServiceChanges:
     name: str
-    mr: str = ""                                  # 主 MR
+    mr: str = ""                                     # 主 MR
     changes: list[Change] = field(default_factory=list)
-    fix_mrs: list[str] = field(default_factory=list)   # 修复问题的 MR（可选）；放末尾保位置参数兼容
+    fix_mrs: list[str] = field(default_factory=list)
+    data_contract: dict = field(default_factory=dict)   # {"redis_keys": [{key,purpose,ttl}], ...}
 
 
 @dataclass
@@ -70,18 +70,20 @@ class ChangesDoc:
     linear: list[str]
     submit_branch: str
     services: list[ServiceChanges] = field(default_factory=list)
+    iteration_url: str = ""
 
     @classmethod
     def from_dict(cls, d: dict) -> "ChangesDoc":
         svcs = []
         for name, body in (d.get("services") or {}).items():
-            changes = [Change(dim=c["dim"], beta=c.get("beta", ""),
-                              prod=c.get("prod", ""), confirm=bool(c.get("confirm", False)),
-                              lang=c.get("lang", ""))
+            changes = [Change(dim=c["dim"], value=c.get("value", ""),
+                              confirm=bool(c.get("confirm", False)),
+                              placeholders=list(c.get("placeholders") or []))
                        for c in (body.get("changes") or [])]
             svcs.append(ServiceChanges(name=name, mr=body.get("mr", ""),
                                        fix_mrs=list(body.get("fix_mrs") or []),
-                                       changes=changes))
+                                       changes=changes,
+                                       data_contract=dict(body.get("data_contract") or {})))
         return cls(task=d["task"], iteration=d["iteration"], title=d.get("title", ""),
                    linear=list(d.get("linear") or []), submit_branch=d.get("submit_branch", ""),
-                   services=svcs)
+                   services=svcs, iteration_url=d.get("iteration_url", ""))

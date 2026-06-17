@@ -51,3 +51,23 @@ def test_release_preserves_manual_region(tmp_path):
     rp.write_text(edited, encoding="utf-8")
     run_v2(tmp_path, "20260612-x", dry_run=False)
     assert "灰度 10%→50%→100%" in rp.read_text(encoding="utf-8")
+
+
+def test_release_cli_beta_to_master(tmp_path, monkeypatch):
+    """发布记录 MR 走 beta_<date>_<keyword> → master（镜像代码发布）。"""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+    import release
+    rp = tmp_path / "releases" / "20260612-x" / "release.md"
+    rp.parent.mkdir(parents=True); rp.write_text("x", encoding="utf-8")
+    monkeypatch.setattr(release, "run", lambda root, batch, dry_run=False: rp)
+    for fn in ("ensure_branch", "stage", "commit", "push"):
+        monkeypatch.setattr(release.gitlab_release, fn, lambda *a, **k: None)
+    monkeypatch.setattr(release.gitlab_release, "needs_confirm", lambda *a, **k: False)
+    calls = {}
+    monkeypatch.setattr(release.gitlab_release, "open_mr",
+                        lambda repo, src, tgt, title: calls.update(src=src, tgt=tgt) or {"ok": True})
+    release.run_cli(["--batch", "20260612-x", "--releases-root", str(tmp_path),
+                     "--beta", "beta_260612_world", "--yes"])
+    assert calls["src"] == "beta_260612_world" and calls["tgt"] == "master"
