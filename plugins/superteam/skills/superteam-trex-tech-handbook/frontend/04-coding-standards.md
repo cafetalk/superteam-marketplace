@@ -136,24 +136,67 @@ if (isUser(data)) {
 
 ## 9. ESLint 与子系统现状【参考】
 
-**trex-website**（Next.js）可作为 Web App 规则集参考，例如：
+| 子系统 | ESLint | 配置文件 | 共享包 | `lint` script | CI lint |
+|--------|--------|----------|--------|---------------|---------|
+| **trex-website** | ^9 | `apps/trex-site/eslint.config.mjs` | 无 | app 级 `eslint .` | 无 |
+| **trex-2b** | ^9.39 | `packages/eslint-config/index.mjs` → `@trex-2b/eslint-config` | **有** | 根 `pnpm -r run lint` | 无 |
+| **trex-extension** | 8.57（devDeps） | **无配置文件** | 无 | **无** | 无 |
+| **passport-sdk** | 无 | — | 无 | 无 | 无 |
+| **dapp-dashboard** | 9 | 仓内 eslint 配置 | 无 | 有 | — |
+| **anchor-sdk** | — | **Biome**（非 ESLint） | — | — | — |
 
-- `eslint-config-next`（core-web-vitals + typescript）
-- `@typescript-eslint/no-explicit-any`：多为 **warn**（目标收紧为 error，存量渐进）
-- `tailwindcss/no-contradicting-classname`、`react-hooks/set-state-in-effect` 等
+## 10. 团队统一 ESLint 规范【推荐】
 
-**其他子系统（`〔t-rex 现状〕`，尚未统一）：**
+以 **trex-2b** `packages/eslint-config/index.mjs`（`@trex-2b/eslint-config`）为团队标准模板；新仓与存量迁移均向其对齐。
 
-- **trex-2b**：共享包 `@trex-2b/eslint-config`（`packages/eslint-config/`），monorepo 内统一 lint 的参考实现。
-- **dapp-dashboard**：ESLint 9 + typescript-eslint + prettier 相关插件。
-- **trex-extension**：ESLint 8.x 栈，主版本与其他仓库 ESLint 9 不一致。
-- **anchor-sdk**：**Biome**（非 ESLint）。
+### Next.js Web App
 
-**收敛方向**：推广 trex-2b 式共享 ESLint 配置包；新应用对齐团队 Prettier 与核心 TS 规则。
+```js
+// eslint.config.mjs — 与 @trex-2b/eslint-config 等价结构
+import { defineConfig, globalIgnores } from "eslint/config";
+import eslintConfigPrettier from "eslint-config-prettier";
+import nextTs from "eslint-config-next/typescript";
+import nextVitals from "eslint-config-next/core-web-vitals";
+
+export default defineConfig([
+  ...nextVitals,
+  ...nextTs,
+  eslintConfigPrettier,
+  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "node_modules"]),
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": ["error", { varsIgnorePattern: "^_", argsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" }],
+      "@typescript-eslint/consistent-type-imports": ["warn", { prefer: "type-imports", fixStyle: "separate-type-imports" }],
+      "import/order": ["warn", { groups: ["type", "builtin", "external", "internal", ["parent", "sibling", "index"]], "newlines-between": "always", alphabetize: { order: "asc", caseInsensitive: true } }],
+      "@typescript-eslint/no-explicit-any": "warn",
+    },
+  },
+]);
+```
+
+- 使用 **Tailwind** 的仓（如 trex-website）在以上基础上追加 `eslint-plugin-tailwindcss`（`flat/recommended`）。
+- **swagger / codegen 生成文件**：文件顶 `/* eslint-disable */`，不手改生成产物。
+- **lint-staged**【推荐】：`eslint --fix` + `prettier --write`（对齐 trex-2b；trex-website 当前仅 Prettier，应补齐 ESLint）。
+- **eslint-config-next** 版本与仓内 Next.js 主版本对齐（website 16.1 / 2b 16.2）。
+
+### Chrome Extension（Vite + React）
+
+- ESLint **9** flat config + `typescript-eslint` + `eslint-plugin-react-hooks` + `eslint-config-prettier`。
+- 须提供 `eslint.config.mjs` 与 `package.json` 的 `lint` script。
+- `〔t-rex 现状〕` trex-extension 仅有 ESLint 8 devDeps、无配置文件——迁移时按上列栈重建，勿继续沿用 ESLint 8 `.eslintrc` 插件组合。
+
+### JS SDK
+
+- 新 TypeScript SDK：与 Next.js 相同的 TS 规则子集（无 `eslint-config-next`）；或沿用 **Biome**（anchor-sdk 先例）。
+- passport-sdk 应补最小 ESLint + `lint` script（当前缺失）。
+
+### 与 Prettier 的关系
+
+ESLint 规则以 **§11 Prettier** 的 trex-website `.prettierrc` 为准；必须 `eslint-config-prettier` 关闭冲突规则。`〔t-rex 现状〕` trex-2b `trailingComma: "all"` 与团队 Prettier【强制】`"none"` 不一致，2b 应改 `.prettierrc` 对齐 website。
 
 ---
 
-## 10. Prettier【强制】
+## 11. Prettier【强制】
 
 以 **trex-website** 根目录 `.prettierrc` 为团队默认（新子系统可直接复用）：
 
@@ -173,7 +216,7 @@ if (isUser(data)) {
 
 ---
 
-## 11. Import 规范
+## 12. Import 规范
 
 - 绝对路径优先（`tsconfig` paths 或构建 alias）。
 - 禁止循环依赖（可配合 `import/no-cycle` 等规则）。
@@ -184,4 +227,4 @@ if (isUser(data)) {
 ## 维护
 
 - 规范细则以各仓库 `.claude/rules`、`eslint.config` 为准；本文件随 `coding.mdc` 演进同步修订。
-- 子系统工具链升级（ESLint 主版本、Prettier）后应更新 **§9** 与 **§10**。
+- 子系统工具链升级（ESLint 主版本、Prettier）后应更新 **§9–§12**。

@@ -1,7 +1,7 @@
 # 前端应用 / SDK 清单 ⭐
 
 t-rex 前端共 10 个子系统（Web App / Extension / SDK / Tool / zkTLS Provider）。  
-开发任意子系统前，先在本章找到对应条目，了解仓库地址、技术栈和环境信息。
+开发任意子系统前，先在本章找到对应条目，了解仓库地址与技术栈；**环境 / 域名见 [`12-environments.md`](12-environments.md)**。
 
 ## 一、核心应用系统
 
@@ -11,15 +11,7 @@ t-rex 前端共 10 个子系统（Web App / Extension / SDK / Tool / zkTLS Provi
 - **技术栈**：Next.js 16.1.0（App Router）/ Tailwind CSS / TypeScript ^5 / pnpm workspace / Vitest
 - **GitLab 仓库**：https://gitlab.com/Keccak256-evg/t-rex/trex-website
 - **消费的后端 / 链上 API**：trex-web REST（`swagger-typescript-api` 生成）；anchor-api；passport-api；wagmi + @reown/appkit（Web3 钱包）
-- **环境 & 部署**：部署平台为 **kaibinluo 部署系统**（Vercel）；build 含 `oss-upload` + `upload:sourcemap`
-  
-  | 环境 | 分支 | 访问地址 |
-  |---|---|---|
-  | Dev | `dev` | https://trex-webdev.vercel.app/ |
-  | Beta | `beta` | https://trex-webbeta.vercel.app/ |
-  | Pre | `trexpre` | https://trex-webpre.vercel.app/ |
-  | Prod | `master` | [www.trex.xyz](https://www.trex.xyz/) |
-  
+- **环境 & 部署**：部署平台为 **kaibinluo 部署系统**（底层 Vercel）；build 含 `oss-upload` + `upload:sourcemap`；环境 / 分支 / 访问地址见 [`12-environments.md#trex-website`](12-environments.md#trex-website)
 - **关键模块 / 页面**：`app/portal/`（Portal）/ `app/passport/`（Passport）/ `app/auth/`（登录）/ `packages/api/`（API 客户端层）
 
 ---
@@ -30,13 +22,7 @@ t-rex 前端共 10 个子系统（Web App / Extension / SDK / Tool / zkTLS Provi
 - **技术栈**：Vite 6 + `@crxjs/vite-plugin` / pnpm / TypeScript 5.9 / React 18.3 / Tailwind CSS 3.4 / Redux（react-redux）/ wagmi + viem / `tlsn-js` + `@extism/extism` + `@trex-tls/proxy-browser-extension-sdk`
 - **GitLab 仓库**：https://gitlab.com/Keccak256-evg/t-rex/trex-extension
 - **消费的后端 / 链上 API**：trex-web REST（`swagger-typescript-api` 生成三套 client：trexApi / trexQuestsApi / trexAnchorApi）；zkTLS notary
-- **环境 & 部署**：
-  
-  | 环境 | 详情 |
-  |---|---|
-  | Prod | [Chrome Web Store](https://chromewebstore.google.com/detail/t-rex/pijboicnfckimnfokpgofmdobghpmpeg) |
-  | Dev / Beta | 本地打包安装（Extension ID：`enamjhlahegmpcpnfbcnkodmlghbmcoh`）|
-  
+- **环境 & 部署**：见 [`12-environments.md#trex-extension`](12-environments.md#trex-extension)
   - 构建命令：`pnpm build:dev` / `build:beta` / `build:pre` / `build:prod`（通过 `APP_ENV` 切换；输出到 `dist_chrome/` 等）
   - 多浏览器构建：`build:chrome` / `build:firefox` / `build:edge` / `build:opera`
   - 开发：`pnpm dev`（nodemon 热重载）
@@ -54,13 +40,7 @@ t-rex 前端共 10 个子系统（Web App / Extension / SDK / Tool / zkTLS Provi
   - `apps/2b-growth-portal/` — **onBoarding**（dev 端口 3000；build 含 `oss-upload`）
   - `apps/2b-dashboard/` — dashboard（dev 端口 3001）
   - 共享能力见仓库根目录 `packages/*`（如 `api`、`ui`、`lib` 等，随仓库演进）
-- **环境 & 部署**：与 **trex-website** 相同，经 **kaibinluo 部署系统** 发布至 **Vercel**；环境 / 分支约定一致（Dev→`dev`、Beta→`beta`、Pre→`trexpre`、Prod→`master`）。**2b-growth-portal** 示例如下（**2b-dashboard** 同套流程，域名以各自 Vercel 项目为准）：
-  
-  | 环境 | 分支 | 访问地址（2b-growth-portal 示例） |
-  |---|---|---|
-  | Dev | `dev` | https://trex-2b-dev-onboarding.vercel.app |
-  | Beta | `beta` | https://trex-2b-beta-onboarding.vercel.app |
-  | Prod | `master` | https://prism.trex.xyz |
+- **环境 & 部署**：经 **kaibinluo 部署系统** 发布至 **Vercel**（部署平台同 trex-website）；长期分支 `dev` / `beta` / `master`（无 Pre）；onBoarding / dashboard 地址见 [`12-environments.md#trex-2b`](12-environments.md#trex-2b)
 - **关键模块 / 页面**：onBoarding（核心 B 端入口）/ dashboard
 - **测试**：
   - **Vitest ^3.2** + `@testing-library/react` + `jsdom`（根目录 `vitest.config.ts` / `vitest.setup.ts`；workspace 分 project：`libs`、`2b-dashboard`、`2b-growth-portal`）
@@ -82,13 +62,7 @@ t-rex 前端共 10 个子系统（Web App / Extension / SDK / Tool / zkTLS Provi
 - **GitLab 仓库**：https://gitlab.com/Keccak256-evg/aspen-platform/team/elaine-ma/dapp-dashboard
 - **消费的后端 / 链上 API**：**drex-core GraphQL**（`@graphql-codegen/cli ^5.0.7` + `@graphql-codegen/typescript` 生成；dev schema URL `http://anchor-dashboard.dev.dipbit.xyz/graphql`）；wagmi + viem + thirdweb（Web3）；axios（部分 REST）
 - **Monorepo 结构**：`apps/dashboard/` + 多个 `packages/*`（如 `@dapp-dashboard/ui` / `@dapp-dashboard/graphql` / `@dapp-dashboard/web3` / `@dapp-dashboard/middleware` / `@dapp-dashboard/server-actions` 等）
-- **环境 & 部署**（Vercel）：
-  
-  | 环境 | 访问地址 |
-  |---|---|
-  | Dev | https://dapp-dashboard-dev.vercel.app |
-  | Beta | https://dapp-dashboard-beta.vercel.app/ |
-  | Prod | https://dapp-dashboard-prod.vercel.app/ |
+- **环境 & 部署**（Vercel）：环境地址见 [`12-environments.md#dapp-dashboard`](12-environments.md#dapp-dashboard)
 - **关键命令**：`npm run codegen`（GraphQL codegen）/ `npm run download`（拉 dev 环境 schema）
 - **关键模块 / 页面**：`apps/dashboard/`（Next.js app）/ `packages/graphql/`（GraphQL 客户端）/ `packages/web3/`（Web3 集成）/ `packages/server-actions/`（Next.js Server Actions）
 
@@ -134,6 +108,14 @@ t-rex 前端共 10 个子系统（Web App / Extension / SDK / Tool / zkTLS Provi
 
 ---
 
+### bugsnag-webhook
+- **类型**：配套服务（Webhook 转发）
+- **业务范围**：接收 Bugsnag Webhook 错误通知并转发到钉钉
+- **GitLab 仓库**：https://gitlab.com/Keccak256-evg/t-rex/bugsnag-webhook
+- **环境 & 部署**：Vercel；部署地址见 [`12-environments.md#配套服务`](12-environments.md#配套服务)
+
+---
+
 ## 四、zkTLS / Tee-TLS 相关
 
 ### trex-proxy-browser-extension-sdk
@@ -155,15 +137,7 @@ t-rex 前端共 10 个子系统（Web App / Extension / SDK / Tool / zkTLS Provi
 - **技术栈**：Provider 配置文件（JSON/规则定义）；发布脚本 `npm run upload:dev`
 - **GitLab 仓库**：https://gitlab.com/Keccak256-evg/t-rex/trex-zktls
 - **消费的后端 / 链上 API**：无（静态配置，被 trex-extension 通过 OSS URL 消费）
-- **环境 & 部署**：Aliyun OSS
-
-  | 环境 | 分支 | Bucket | Base URL |
-  |---|---|---|---|
-  | Dev / Beta | `dev` | `drex-dev-new` | `https://drex-dev-new.oss-ap-southeast-1.aliyuncs.com/drex/static/zktls/proxy/providers/` |
-  | Pre / Prod | `master` | `drex-prod` | `https://drex-prod.oss-ap-southeast-1.aliyuncs.com/drex/static/zktls/proxy/providers/` |
-
-  - Dev / Beta 发布：根目录 `npm run upload:dev`
-  - Prod 发布：[阿里云 OSS 控制台](https://oss.console.aliyun.com/bucket/oss-ap-southeast-1/drex-prod/object?path=drex%2Fstatic%2Fzktls%2Fproxy%2Fproviders%2F) 手动上传
+- **环境 & 部署**：Aliyun OSS；环境 / Bucket / Base URL 见 [`12-environments.md#trex-zktls`](12-environments.md#trex-zktls)；发布命令见 [`11-quality-ops.md`](11-quality-ops.md)
 - **关键模块**：`proxy-providers/providers/`（Provider 配置文件目录）
 
 ---
@@ -175,15 +149,7 @@ t-rex 前端共 10 个子系统（Web App / Extension / SDK / Tool / zkTLS Provi
 - **GitLab 仓库**：https://gitlab.com/Keccak256-evg/t-rex/trex-tls/trex-tlsn-plugin
 - **本地路径建议**：`{your_workspace}/zktls/trex-tlsn-plugin`
 - **消费的后端 / 链上 API**：zkTLS **notary**（本地/远程 Notary Server）；插件内对目标平台 HTTPS API 做 TLSNotary 公证（无独立业务 REST）
-- **环境 & 部署**：构建产物上传 **Aliyun OSS**，由 **trex-extension** 按环境拉取
-
-  | 环境 | Base URL |
-  |---|---|
-  | Dev | `https://drex-dev-new.oss-ap-southeast-1.aliyuncs.com/drex/static/zktls/notary` |
-  | Beta | `https://drex-beta.oss-ap-southeast-1.aliyuncs.com/drex/static/zktls/notary` |
-  | Pre / Prod | `https://drex-prod.oss-ap-southeast-1.aliyuncs.com/drex/static/zktls/notary` |
-
-  `〔t-rex 现状〕` OSS 无 pre 环境 → pre 与 prod 共用 OSS-prod 地址，**新工程不要复制此模式**。
+- **环境 & 部署**：构建产物上传 **Aliyun OSS**，由 **trex-extension** 按环境拉取；Base URL 见 [`12-environments.md#trex-tlsn-plugin`](12-environments.md#trex-tlsn-plugin)；发布命令见 [`11-quality-ops.md`](11-quality-ops.md)
 - **关键命令**：`./install.sh`（安装 `extism-js`）/ `cd products/<平台> && npm run build`（单插件）/ `npm run build:all`（批量构建至 `build/*.wasm`）/ `npm run gen-template`（生成新平台脚手架模板）
 - **关键模块**：`products/`（各平台插件，如 `duolingo`、`bilibili`、`github_connect`）/ `scripts/build-all-products.js`（批量构建）/ 各产品 `esbuild.js`（WASM 命名规则 `{api_prefix}_{常量}.wasm`，如 `duolingo_api_users_DUOLINGO_PLUS.wasm`）/ `.cursor/skills/create-platform-verification/`（新平台插件生成技能）
 
@@ -198,4 +164,5 @@ t-rex 前端共 10 个子系统（Web App / Extension / SDK / Tool / zkTLS Provi
 
 ## 维护
 
-- 子系统信息变更（仓库迁移 / 部署地址 / 技术栈升级）需同步更新本章
+- 子系统信息变更（仓库迁移 / 技术栈升级）需同步更新本章
+- **环境 / 域名变更** → 只更新 [`12-environments.md`](12-environments.md)，不在本章重复维护 URL 表

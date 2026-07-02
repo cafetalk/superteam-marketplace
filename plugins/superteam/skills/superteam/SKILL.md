@@ -38,7 +38,9 @@ superteam 是面向用户的智能代理，不参与数据管道。它是知识�
 | superteam-data | 业务侧线上数据（活动/投放、badge、provider、产品 Quest 等，MCP agentic_data） | ✅ `query_agentic_data.py`（桥接 MCP） |
 | superteam-linear | Linear 工单/迭代（官方 MCP HTTP + Bearer） | ✅ `query_linear.py` |
 | superteam-git | 本地 Git 洞察、提交代码、提测合并（按 superteam-git 规范执行） | ✅ `query_git.py` |
-| superteam-report | 智能周报生成 | 🔨 骨架实现（GitLab/Agent 数据源待接入） |
+| superteam-report | 智能周报生成、sprint/task/member pulse 快照 | ✅ 已上线 |
+| superteam-report-insight | PAI v2 Project Lead 简报（由 sprint 派生） | ✅ `snapshot_pai.py` |
+| superteam-pai | PAI 调度框架（规则规划 + pulse/周报编排） | ✅ `run_pai.py`（B V1） |
 
 Hub **不调用** superteam-sync、sync-*、process-*、store-*、source-* 系列 skill。
 
@@ -79,6 +81,11 @@ python superteam/scripts/route.py --query "用户的问题" --execute
 | "有哪些文档已同步？" | list_source_docs.py | 返回已同步源文档列表 |
 | "张三在迭代25做了什么？" | `query_linear.py` | Linear 工单/周期（**不**走 superteam-data） |
 | "帮我生成本周周报" | generate_report.py | 周报生成（骨架） |
+| "团队周报 / 迭代周报" | generate_team_weekly_report.py | 团队迭代周报（Linear Cycle，同 superteam-report skill） |
+| "pulse 快照 / sprint 日报" | snapshot_sprint.py | TREX-493 sprint daily pulse（`pulse-daily` 同脚本） |
+| "PAI / pai 日报 / project lead 简报" | snapshot_pai.py | PAI v2 洞察（`superteam-report-insight`） |
+| "更新看板 / 今日 pulse 全量" | run_pai.py | 全量 pulse 编排（`superteam-pai`，等同 daily） |
+| "/superteam-pai" | run_pai.py | PAI 调度（自然语言 → plan → 子 skill；`superteam-pai`） |
 
 ### 触发关键词
 
@@ -86,7 +93,9 @@ python superteam/scripts/route.py --query "用户的问题" --execute
 |----------|--------|
 | superteam-data | 广告主、项目方、活动、campaign、投放、增长、拉新、邀请、provider、供应商、zktls、quest、alpha、白名单、badge、anchor、series、系列、链、chain、claim、可领取、reward、奖励、persona、人群、multiplier、倍率、project、项目配置、全局配置、global config |
 | superteam-linear | 迭代、任务、进度、成员贡献、bug、缺陷、story point、sprint、iteration、task、做了哪些、负责什么任务、工作量、完成率、linear、issue、工单、backlog、cycle |
-| superteam-report | 周报、weekly、report、本周、上周、工作总结 |
+| superteam-report | **个人**：`周报`（单说默认个人）、个人周报、我的周报、研发周报、本周/上周周报、生成本周周报、工作总结、工作汇报、personal weekly、my weekly report。**团队**：团队周报、迭代周报、全团队周报、组织/部门周报、team weekly report、team report、cycle report（与团队短语同时出现时只跑团队脚本）。**Pulse**：pulse 快照、trex pulse、TREX-493、同步 pulse、sprint 日报、sprint 快照、pulse sprint → sprint 快照；**member**（仅显式）：member 快照、成员负载快照、pulse member |
+| superteam-report-insight | PAI、pai 日报、pai 快照、pulse pai、project lead 简报、pl 简报、pulse-pai、生成 pai、pai 简报 |
+| superteam-pai | `/superteam-pai`、`superteam-pai`、superteam pai；**编排**：更新看板、刷新看板、今日 pulse、pulse 全量、pulse 入库、编排 pulse、跑 daily |
 | superteam-member/list_members | 成员、团队成员、谁是、有哪些人、角色、前端、后端 |
 | list_source_docs | 文档列表、已同步、同步状态、有哪些文档 |
 | search_docs | （以上均不匹配时的 fallback，适用于任何知识类问题） |

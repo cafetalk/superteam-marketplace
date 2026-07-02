@@ -96,8 +96,17 @@ def _run_script(script_rel: str, args: list[str]) -> dict[str, Any]:
     }
 
 
+def _extract_linear_result(payload: dict[str, Any]) -> dict[str, Any]:
+    result = payload.get("result")
+    if isinstance(result, dict):
+        return result
+    if isinstance(result, str) and result.strip():
+        return {"error": result.strip()}
+    return {}
+
+
 def _extract_linear_issues(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    result = (payload.get("result", {}) or {})
+    result = _extract_linear_result(payload)
     issues = result.get("issues", [])
     if isinstance(issues, list):
         return issues
@@ -140,7 +149,7 @@ def _extract_cycle_info(issue: dict[str, Any]) -> dict[str, str]:
 
 
 def _extract_linear_page_info(payload: dict[str, Any]) -> dict[str, Any]:
-    result = (payload.get("result", {}) or {})
+    result = _extract_linear_result(payload)
     page_info = result.get("pageInfo", {})
     if isinstance(page_info, dict):
         return page_info
@@ -195,15 +204,53 @@ def _build_cycle_lookup(issues: list[dict[str, Any]]) -> dict[str, dict[str, str
     return cycle_lookup
 
 
-def _collect_linear(member: str, start: datetime, end: datetime, first: int) -> dict[str, Any]:
-    args = [
-        "--tool", "list_issues",
-        "--args-json", json.dumps({"assignee": member, "limit": first}, ensure_ascii=False),
-    ]
-    result = _run_script("superteam-linear/scripts/query_linear.py", args)
-    payload = result.get("payload", {}) or {}
-    issues = _extract_linear_issues(payload)
-    page_info = _extract_linear_page_info(payload)
+def _collect_linear(member: str, start: datetime, end: datetime, max_issues: int) -> dict[str, Any]:
+    issues: list[dict[str, Any]] = []
+    page_info: dict[str, Any] = {}
+    cursor: str | None = None
+    fetch_error = ""
+    raw_fetch_exit_code = 0
+    raw_stderr = ""
+    raw_stdout = ""
+
+    while len(issues) < max_issues:
+        page_limit = min(250, max_issues - len(issues))
+        call_args: dict[str, Any] = {"assignee": member, "limit": page_limit, "orderBy": "updatedAt"}
+        if cursor:
+            call_args["cursor"] = cursor
+        result = _run_script(
+            "superteam-linear/scripts/query_linear.py",
+            [
+                "--tool",
+                "list_issues",
+                "--args-json",
+                json.dumps(call_args, ensure_ascii=False),
+            ],
+        )
+        raw_fetch_exit_code = result.get("exit_code", 0)
+        raw_stderr = result.get("stderr", "") or ""
+        raw_stdout = result.get("stdout", "") or ""
+        payload = result.get("payload", {}) or {}
+        page_result = _extract_linear_result(payload)
+        if page_result.get("error"):
+            fetch_error = str(page_result["error"])
+            break
+        if raw_fetch_exit_code != 0:
+            fetch_error = str(payload.get("message") or payload.get("error") or "").strip()
+            break
+        batch = page_result.get("issues", [])
+        if isinstance(batch, list):
+            issues.extend(batch)
+        page_info = {
+            "hasNextPage": bool(page_result.get("hasNextPage")),
+            "cursor": page_result.get("cursor") or page_result.get("nextCursor"),
+        }
+        if not page_info.get("hasNextPage"):
+            break
+        cursor = page_info.get("cursor")
+        if not cursor:
+            break
+
     cycle_lookup = _build_cycle_lookup(issues)
 
     completed: list[dict[str, Any]] = []
@@ -283,18 +330,14 @@ def _collect_linear(member: str, start: datetime, end: datetime, first: int) -> 
             if not is_closed:
                 in_progress.append(row)
 
-    stderr = result.get("stderr", "") or ""
-    payload_err = (payload.get("message") or payload.get("error") or "") if result["exit_code"] != 0 else ""
-    fetch_error = payload_err
-    if result["exit_code"] != 0 and not fetch_error:
-        # 尝试从 stderr 抽取更可读的根因
-        m = re.search(r"(ENOTFOUND\s+[^\s]+)", stderr)
+    if raw_fetch_exit_code != 0 and not fetch_error:
+        m = re.search(r"(ENOTFOUND\s+[^\s]+)", raw_stderr)
         if m:
             fetch_error = f"网络解析失败：{m.group(1)}"
-        elif "fetch failed" in stderr:
+        elif "fetch failed" in raw_stderr:
             fetch_error = "网络连接失败：fetch failed"
-        elif stderr.strip():
-            fetch_error = stderr.strip().splitlines()[-1]
+        elif raw_stderr.strip():
+            fetch_error = raw_stderr.strip().splitlines()[-1]
 
     return {
         "member_name": candidate_names[0] if candidate_names else member,
@@ -318,9 +361,9 @@ def _collect_linear(member: str, start: datetime, end: datetime, first: int) -> 
             )
         ],
         "page_info": page_info,
-        "raw_fetch_exit_code": result["exit_code"],
-        "raw_stderr": stderr,
-        "raw_stdout": result.get("stdout", ""),
+        "raw_fetch_exit_code": raw_fetch_exit_code,
+        "raw_stderr": raw_stderr,
+        "raw_stdout": raw_stdout,
         "fetch_error": fetch_error,
     }
 
@@ -1004,7 +1047,7 @@ def main() -> None:
     )
     parser.add_argument("--week", "-w", choices=["this", "last"], help="this=本周, last=上周")
     parser.add_argument("--format", "-f", choices=["markdown", "json"], default="markdown")
-    parser.add_argument("--linear-first", type=int, default=250, help="Linear 一次拉取任务数量（上限 250，由 Linear MCP 限制）")
+    parser.add_argument("--linear-first", type=int, default=100000, help="Linear 最多拉取任务数量（分页，每页最多 250）")
     parser.add_argument(
         "--require-linear",
         choices=["true", "false"],

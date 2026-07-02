@@ -19,7 +19,7 @@
 | 仓库 | Next.js | React | 包管理器 | Monorepo 工具 | 测试框架 |
 |---|---|---|---|---|---|
 | trex-website | 16.1 | 18.2 | pnpm | pnpm workspace | Vitest |
-| trex-2b | 16.2 | **19.2** | pnpm | pnpm workspace | `node --test` |
+| trex-2b | 16.2 | **19.2** | pnpm | pnpm workspace | Vitest + `node --test`（约定校验）|
 | dapp-dashboard | **14.1** | 18.3 | **npm** 10.9.2 | **Turborepo** ^2.6 | Jest |
 
 **新工程基线**（强烈推荐参考 trex-website 配置）：

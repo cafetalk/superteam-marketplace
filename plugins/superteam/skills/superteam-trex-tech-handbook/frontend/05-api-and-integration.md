@@ -74,7 +74,63 @@ npm run codegen    # graphql-codegen --config tools/graphql-codegen.yml
 
 **zkTLS / proxy-sdk 集成**（trex-website 使用）：
 - npm 包：`@trex-tls/proxy-browser-extension-sdk @0.3.14`（即 trex-proxy-browser-extension-sdk 的发布形态）
-- WASM 集成方式：TODO(@elaine) 确认 trex-tlsn-plugin WASM 加载方式
+
+**trex-tlsn-plugin WASM 加载**（trex-website MPC TEE TLS 验证）：
+
+WASM 产物由 `trex-tlsn-plugin` 构建后上传至 Aliyun OSS；前端**按 URL 加载 OSS 上的 `.wasm` 文件**，不经 npm 打包进 bundle。
+
+- **OSS Base URL**：按环境取 [`12-environments.md` §trex-tlsn-plugin](12-environments.md#trex-tlsn-plugin) 表中 `Base URL`（由 `NEXT_PUBLIC_CLIENT_ENV` 映射 dev / beta / pre / prod）
+- **插件 URL 规则**：`${ossUrl}/${targetId}_${targetName}.wasm`（`targetId`、`targetName` 来自 badge condition）
+- **调用方式**：经浏览器 TLSNotary 客户端 `tlsn.connect()` → `client.runPlugin(pluginUrl)`
+
+```ts
+const pluginUrl = `${ossUrl}/${targetId}_${targetName}.wasm`;
+const client = await (window as any).tlsn.connect();
+const pluginResult = await client.runPlugin(pluginUrl);
+```
+
+参考实现：`trex-website` `apps/trex-site/hooks/portal/badges/verify/useMpcTeeTlsVerification.tsx`。
+
+## Passport 双通路集成【强制】
+
+`drex-passport`（后端 Java 服务，OpenAPI 标签 Passport / Auth）与链上 Passport 合约是**两条独立通路**，trex-website 同时使用：
+
+| 通路 | 用途 | 技术 | trex-website 落点 |
+|------|------|------|-------------------|
+| **链上** | Mint / 查链上 Passport 状态 | npm `@keccak256-evg/passport-sdk`（`PassportSDK`） | `hooks/useMintPassport.tsx`、`components/portal/main/portalLogin/MintPassPort.tsx` |
+| **REST** | 登录、会话、`/v1/passport/me` 等业务身份 | `swagger-typescript-api` → `passportClient/PassportClient.ts` + `*Proxy.ts`；Portal 主路径亦经 `client/TrexClient.ts` | `passportClient/`、`hooks/portal/usePortalPassport.ts` |
+
+**链上 SDK 接入要点**：
+
+```ts
+// 动态 import，避免 SSR 打包问题
+const { PassportSDK } = await import("@keccak256-evg/passport-sdk");
+const sdk = new PassportSDK({
+  chain: thirdweb_trexChain,
+  registryAddress: process.env.NEXT_PUBLIC_PASSPORT_CONTRACT_ADDRESS,
+  client: thirdweb_client,
+  account: activeAccount,
+});
+await sdk.checkWalletHasPassport(address);
+await sdk.createPassport(); // 用户确认后
+```
+
+- 合约地址：`NEXT_PUBLIC_PASSPORT_CONTRACT_ADDRESS`（默认 Registry `0x1B326360Ec9E3cEF6129173D35b86a6803e5751F`，链 ID 1962，见 passport-sdk `src/constants/addresses.ts`）
+- SDK 还导出 `ViemPassportSDK`、`UnifiedPassportSDK` 与 React hooks（`useUnifiedPassportSDK` 等）；新集成优先评估 `UnifiedPassportSDK`
+
+**REST 接入要点**：
+
+```bash
+pnpm generate:passportApi   # → passportClient/PassportClient.ts（不手改）
+```
+
+- Base URL：`apps/trex-site/config/serverUrl.ts`（prod `api.trex.xyz`，dev `api.trex.dev.dipbit.xyz`，beta `api.trex.beta.dipbit.xyz`）
+- OpenAPI 源：`apps/trex-site/passportClient/api.json`
+- Proxy 层注入鉴权 Header，与 TrexApi 模式一致（见上文 Proxy 包装模式）
+
+**签名安全**（与 `10-security.md` Web3 章节对齐）：链上 `createPassport` 前须展示可读操作说明；禁止盲签原始 bytes。
+
+`〔t-rex 现状〕` **已知偏差**：`passportClient/RegistrationProvider.tsx` 将 `passport_token` 写入 `localStorage`，与本章 token 存储【强制】冲突——应迁移至 httpOnly cookie（或后端会话方案），不得长期保留现状。trex-2b 当前未集成 passport-sdk。
 
 ## 手写调用兜底规约
 

@@ -25,7 +25,9 @@
   - [ ] XSS：禁止无净化的 `dangerouslySetInnerHTML`
   - [ ] CSP：配置 Content Security Policy 响应头（见 `frontend/10-security.md`）
 - [ ] **测试框架初始化**：安装测试框架 + 至少一个示例单测能跑通（见 `frontend/09-testing.md`）
+- [ ] **Playwright E2E 初始化**：`e2e/` + `playwright.config.ts` + 至少一条 smoke 用例能跑通（见 `frontend/09-testing.md` §E2E）
 - [ ] **注册到 `frontend/01-apps.md`**：按条目模板填写完整条目
+- [ ] **登记环境 URL**：在 [`frontend/12-environments.md`](../12-environments.md) 追加环境 / 分支 / 访问地址表
 
 ---
 
@@ -40,7 +42,8 @@
   - [ ] 开发模式热重载验证
   - [ ] 生产打包产物验证（在 Chrome 开发者模式下可加载）
 - [ ] **Chrome Store 提审确认**：
-  - [ ] 了解 Chrome Store 提审周期（TODO(@elaine) 填写实际天数）
+  - [ ] 了解 Chrome Store 提审周期【参考】：
+    - 〔t-rex 经验〕trex-extension 历次提审约 **3–7 天**；排期按此预留缓冲
   - [ ] 准备好 Store 资产（截图 / 图标 / 说明文案）
   - [ ] 确认隐私政策 URL
 - [ ] **安全**：

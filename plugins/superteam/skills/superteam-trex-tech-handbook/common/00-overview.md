@@ -18,7 +18,7 @@ t-rex 生态按职能切分大致如下（具体仓库 / 服务清单见 `backen
 trex-tech-handbook/
 ├── common/        ⭐ 跨前后端通用规范（你正在看的这一层）
 ├── backend/       Java 后端规范
-└── frontend/      占位，下一阶段开启
+└── frontend/      前端规范（M3 已落地，见 frontend/README.md）
 ```
 
 ## K8s 环境 ↔ 长期分支【强制】
@@ -128,7 +128,7 @@ t-rex 后端跑在 **阿里云 K8s** 上，三套环境，对应三个长期分�
 |---|---|
 | 开发任何 t-rex 子项目 | `common/` 全套（强制规范） |
 | 开发后端 Java 服务 | `common/` + `backend/` |
-| 开发前端 | `common/` + `frontend/`（规范待补） |
+| 开发前端 | `common/` + `frontend/`（规范见 `frontend/README.md`） |
 | 想看整体流程 | 本章上面的"端到端开发流程速览" |
 | 拿到新任务，从 0 到提测 | `common/06-development-flow.md` ⭐ |
 | 紧急上线 / 发布 (beta→master) | `common/04-ci-and-release.md` |

@@ -30,6 +30,32 @@ Hub、`generate_report.py`、`preflight_linear_issue.py`、`save_linear_issue_on
 ## 脚本（CLI / 自动化 / 回退）
 
 - `scripts/query_linear.py`：启动 `npx -y mcp-remote https://mcp.linear.app/mcp`，调用 `tools/list` / `tools/call` 查询或更新 issues。stdout 为统一 JSON 包一层 `skill` / `type` / `result`，便于脚本解析。
+- `scripts/archive_cycle_issues.py`：批量归档脚本。统一走 Linear GraphQL，支持按 `issue ids`、`cycle`、`project`、`project + cycle` 收集候选 issue；默认 `dry-run`，传 `--execute` 才真正归档；只处理 `Done` / `Canceled` 的任务。
+
+### `archive_cycle_issues.py` 用法
+
+```bash
+# 按 cycle 预览可归档任务（默认 dry-run）
+python3 scripts/archive_cycle_issues.py --cycle "Cycle 42"
+
+# 按 project 预览可归档任务
+python3 scripts/archive_cycle_issues.py --project "World Cup"
+
+# 按 issue ids 预览可归档任务（支持逗号分隔）
+python3 scripts/archive_cycle_issues.py --issue-id TREX-101,TREX-102
+
+# 按 project + cycle 真正执行归档
+python3 scripts/archive_cycle_issues.py --project "World Cup" --cycle "Cycle 42" --execute
+```
+
+说明：
+
+- `--issue-id` 不能和 `--project` / `--cycle` 混用。
+- `--project`、`--cycle` 可单独使用，也可组合使用。
+- `--issue-id` 支持逗号分隔、重复传参、自动去重。
+- 默认只预览，不写 Linear。
+- 仅 `Done` / `Canceled` 且未归档任务会进入归档候选。
+- 归档执行统一使用 `LINEAR_API_KEY` + GraphQL `issueArchive`。
 
 ## 配置（`query_linear.py` 路径）
 

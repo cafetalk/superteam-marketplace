@@ -1,6 +1,6 @@
 # 前端层（frontend/）
 
-t-rex 前端开发上下文包，涵盖 10 个前端子系统的技术规范（[TREX-405](https://linear.app/t-rex-v1/issue/TREX-405/) 落地，by @elaine）。
+t-rex 前端开发上下文包，涵盖 10 个前端子系统的技术规范（[TREX-405](https://linear.app/t-rex-v1/issue/TREX-405/) 落地）。
 
 **适用范围**：所有 t-rex 前端项目（web/ + anchor 子域前端 + quest manage-web + agentic/superteam-web + sdk/ + trex-tls/ 内 Node-based 子项目）。
 
@@ -18,10 +18,11 @@ t-rex 前端开发上下文包，涵盖 10 个前端子系统的技术规范（[
 | [`05-api-and-integration.md`](05-api-and-integration.md) | REST codegen / GraphQL codegen / 链上 API 集成 |
 | [`06-state-and-data.md`](06-state-and-data.md) | React Query（服务端状态）+ Jotai（客户端状态）|
 | [`07-error-and-monitoring.md`](07-error-and-monitoring.md) | 错误边界；BugSnag；GA；用户侧错误展示 |
-| [`08-test-handoff.md`](08-test-handoff.md) ⭐ | **前端提测 / 发布分支**（`dev_*` → `review_*` → `beta_*` → `master`）|
+| [`08-test-handoff.md`](08-test-handoff.md) ⭐ | **前端提测 / 发布分支**（`dev_*` → `review_*` → `master`；无短期 `beta_*`）|
 | [`09-testing.md`](09-testing.md) | Web App / Extension / SDK 各自测试策略 |
 | [`10-security.md`](10-security.md) | token 存储；XSS / CSRF；Web3 签名安全；Extension 权限 |
-| [`11-quality-ops.md`](11-quality-ops.md) | 构建产物；多环境部署（Vercel / OSS / Chrome Store）|
+| [`11-quality-ops.md`](11-quality-ops.md) | 构建产物；发布操作（Vercel / OSS / Chrome Store）|
+| [`12-environments.md`](12-environments.md) ⭐ | **各子系统多环境域名 / 分支 / 测试入口** |
 | [`appendix/glossary.md`](appendix/glossary.md) | 前端 + Web3 / zkTLS 术语表 |
 | [`appendix/toolchain.md`](appendix/toolchain.md) | Node / 包管理器 / IDE / 命令速查 |
 | [`appendix/templates/new-app-checklist.md`](appendix/templates/new-app-checklist.md) | 新建前端子系统 Checklist（A/B/C 三类）|
@@ -36,7 +37,10 @@ t-rex 前端开发上下文包，涵盖 10 个前端子系统的技术规范（[
 
 ## 设计文档
 
-本层的设计与实现计划：[`docs/skills-design/2026-05-12-trex-tech-handbook-frontend.md`](../../../docs/skills-design/2026-05-12-trex-tech-handbook-frontend.md)
+本层设计与实现计划（**设计归档，分支 / 提测以正文为准**）：
+[`docs/skills-design/2026-05-12-trex-tech-handbook-frontend.md`](../../../docs/skills-design/2026-05-12-trex-tech-handbook-frontend.md)
+
+现行分支命名：`common/02-branch-and-commit.md`；前端提测 SOP：`frontend/08-test-handoff.md`。
 
 ## 阅读顺序
 
@@ -49,6 +53,7 @@ t-rex 前端开发上下文包，涵盖 10 个前端子系统的技术规范（[
 
 ## 维护
 
-- 本目录由 @elaine 维护（TREX-405）
-- 新增前端子系统时同步更新 `01-apps.md` + `appendix/templates/new-app-checklist.md`
-- 跨 common/ 与 frontend/ 的规约冲突以 common/ 为准（common/ 是平台级强制）
+- 新增前端子系统时同步更新 `01-apps.md` + `appendix/templates/new-app-checklist.md`；有环境 URL 时同步 `12-environments.md`
+- 环境 / 域名变更 → 只更新 `12-environments.md`
+- 发布流程 / 构建命令变更 → `11-quality-ops.md`
+- 跨 common/ 与 frontend/ 的规约冲突：分支 / commit / 提测 MR 以 **common/** 为准；**前端 QA 整合与发布 MR 源分支**以 `frontend/08-test-handoff.md` + `appendix/templates/release-checklist.md` 为准

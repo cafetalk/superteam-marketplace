@@ -131,13 +131,12 @@ QA 提交发布申请前（即触发 `common/04` §发布 CI 自动建 MR），*
 
 ## 自动化测试覆盖【推荐】
 
-TODO(@allen) 整章 —— 当前自动化能力 TBD：
-
-- 单元测试：见 `backend/08-testing.md`（JUnit 5 + Mockito）
-- 接口自动化：是否引入 Postman / Karate / RestAssured？覆盖率目标？
-- 端到端（E2E）：跨服务场景的自动化方案？
-- 性能压测：平台 / 工具 / 触发时机？
-- 自动化失败回流机制：CI 失败 → ?
+- **单元测试**：见 `backend/08-testing.md`（JUnit 5 + Mockito）；前端见 `frontend/09-testing.md`（Vitest 等）
+- **前端 UI E2E**：**Playwright**（`frontend/09-testing.md` §E2E）；单仓关键用户路径；优先 trex-website；CI smoke 不阻塞 merge
+- **接口自动化**：TODO(@allen) — 是否引入 Postman / Karate / RestAssured？覆盖率目标？
+- **跨服务链路 E2E**：TODO(@allen) — 合约 + 后端 k8s + 前端的端到端自动化编排（可与前端 Playwright + 接口自动化组合）
+- **性能压测**：TODO(@allen) — 平台 / 工具 / 触发时机？
+- **自动化失败回流机制**：TODO(@allen) — CI 失败 → ?
 
 ## QA 协作工具
 
@@ -164,7 +163,7 @@ TODO(@allen)：
 
 - **pre / staging 环境**：是否引入？定义 / 部署源分支 / 申请流程
 - **QA 提测接收机制**：自动通知 vs 人工 trigger
-- **自动化测试基础设施**：接口自动化 / E2E / 性能压测
+- **自动化测试基础设施**：接口自动化 / 跨服务链路 E2E / 性能压测（前端单仓 UI E2E 已定为 Playwright，见 `frontend/09-testing.md`）
 - **测试用例管理工具**：选型 / 用例归属 / 维护周期
 - **bug 跟踪粒度**：Linear sub-issue 还是独立 tracker
 - **跨团队回归责任划分**：跨服务变更时的 RACI

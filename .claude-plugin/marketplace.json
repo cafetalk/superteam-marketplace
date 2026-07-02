@@ -12,7 +12,7 @@
       "name": "superteam",
       "source": "./plugins/superteam",
       "description": "Superteam Hub — intelligent query router for team knowledge base with semantic search, member matching, and task insights",
-      "version": "1.4.2",
+      "version": "1.4.3",
       "keywords": [
         "knowledge-base",
         "rag",

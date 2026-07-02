@@ -43,6 +43,27 @@ def source_docs_root() -> Path:
     return Path.home() / _DEFAULT_SOURCE_DOCS
 
 
+def superteam_home() -> Path:
+    """Operational data root (logs, pulse, run state). Default ``~/.superteam``."""
+    raw = env("SUPERTEAM_HOME")
+    if raw:
+        return Path(raw).expanduser()
+    return Path.home() / ".superteam"
+
+
+def pulse_output_root() -> Path:
+    """Daily pulse JSON staging: ``<root>/<YYYY-MM-DD>/{team}-{type}-{period}.json``.
+
+    Configure via ``TREX_PULSE_DIR`` or ``SUPERTEAM_PULSE_DIR`` (env or ``~/.superteam/config``).
+    Default: ``~/.superteam/pulse`` (outside the git repo — suitable for server cron).
+    """
+    for key in ("TREX_PULSE_DIR", "SUPERTEAM_PULSE_DIR"):
+        raw = env(key)
+        if raw:
+            return Path(raw).expanduser()
+    return superteam_home() / "pulse"
+
+
 def _config_file_paths() -> list[Path]:
     """Paths scanned for ``~/.superteam`` style INI (``KEY=value`` per line).
 

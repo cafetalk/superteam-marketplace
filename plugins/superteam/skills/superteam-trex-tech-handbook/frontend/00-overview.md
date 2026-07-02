@@ -38,7 +38,7 @@ t-rex 前端是面向用户（C 端）、项目方（B 端）与内部运营的 
 - **trex-zktls**（Proxy Provider，Aliyun OSS 部署）
 - **trex-tlsn-plugin**（MPC WASM Provider，Aliyun OSS 部署）
 
-各子系统详细条目（仓库 / 技术栈 / 部署地址 / 负责人）见 `01-apps.md`。
+各子系统详细条目（仓库 / 技术栈）见 `01-apps.md`；**环境 / 域名**见 [`12-environments.md`](12-environments.md)。
 
 ## 阅读顺序建议
 
@@ -50,14 +50,14 @@ t-rex 前端是面向用户（C 端）、项目方（B 端）与内部运营的 
 4. **本文档**（`frontend/00-overview.md`）— 前端定位与分类
 5. `frontend/01-apps.md` — 找到你要开发的子系统
 6. `frontend/02-architecture.md` — 技术栈基线
-7. 按需读 `frontend/03-11` + `frontend/appendix/`
+7. 按需读 `frontend/03-12` + `frontend/appendix/`
 
 ## 与 common 层的关系
 
-`common/` 章节（分支命名 / commit 规范 / 提测 / CI / Linear）前端**完全复用**，无需重复。
+`common/` 章节（分支命名 / commit 规范 / 提测 MR / CI / Linear）前端**复用**；提测 MR 见 `common/03`，**QA 整合与发布路径**见 `frontend/08-test-handoff.md`（与 `common/04`、`common/07` 有差异）。
 
-前端提测 / 发布与 `common/03`、`common/07`、`common/04` 一致；分支速查见 `frontend/08-test-handoff.md`。
+前端提测 MR 与 `common/03` 一致；**发布不走短期 `beta_*`**，见 `frontend/08-test-handoff.md`。
 
 ## GitLab Sub-group
 
-全部前端仓库统一在 `Keccak256-evg/t-rex/` 下。
+多数前端仓库在 `Keccak256-evg/t-rex/` 下；路径例外见 `frontend/01-apps.md`（如 dapp-dashboard、anchor-sdk）。

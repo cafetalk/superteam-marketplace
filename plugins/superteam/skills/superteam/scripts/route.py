@@ -80,11 +80,13 @@ ROUTES: list[Route] = [
         pass_query=True,
     ),
     Route(
-        skill="superteam-report-team",
-        script="superteam-report-team/scripts/generate_team_weekly_report.py",
+        skill="superteam-report",
+        script="superteam-report/scripts/generate_team_weekly_report.py",
         keywords=[
+            # 团队周报（与「个人周报」用词互斥：勿在此放单独「周报」）
             "团队周报", "团队 周报", "迭代周报", "团队迭代周报",
-            "team weekly", "team report", "cycle report",
+            "全团队周报", "组织周报", "部门周报",
+            "team weekly", "team weekly report", "team report", "cycle report",
         ],
         description="团队迭代周报（Linear Cycle）",
         status="live",
@@ -94,10 +96,69 @@ ROUTES: list[Route] = [
         skill="superteam-report",
         script="superteam-report/scripts/generate_report.py",
         keywords=[
-            "周报", "weekly", "report", "本周", "上周",
+            # 个人研发周报；含单独「周报」——若同时命中团队周报关键词则由下方逻辑去掉个人脚本
+            "周报", "个人周报", "我的周报", "研发周报",
             "工作总结", "工作汇报",
+            "本周周报", "上周周报", "生成本周周报", "生成上周周报",
+            "本周工作总结", "上周工作总结",
+            "personal weekly", "my weekly report",
         ],
-        description="周报生成",
+        description="个人研发周报生成",
+        status="live",
+        pass_query=True,
+    ),
+    Route(
+        skill="superteam-report",
+        script="superteam-report/scripts/snapshot_sprint.py",
+        keywords=[
+            # 长短语，避免与 superteam-linear 裸「sprint」「迭代」误命中
+            "pulse 快照", "pulse快照", "trex pulse", "trex-493", "TREX-493",
+            "生成 pulse", "同步 pulse", "pulse 同步",
+            "sprint 日报", "sprint日报", "迭代日报", "cycle 日报",
+            "sprint daily", "sprint snapshot", "sprint 快照",
+            "pulse sprint", "迭代 pulse",
+        ],
+        description="TREX-493 sprint daily pulse 快照",
+        status="live",
+        pass_query=False,
+    ),
+    Route(
+        skill="superteam-report",
+        script="superteam-report/scripts/snapshot_member.py",
+        keywords=[
+            "member 快照", "member快照", "成员负载快照",
+            "member weekly snapshot", "member snapshot", "pulse member",
+            "成员 pulse", "成员周报快照",
+        ],
+        description="TREX-493 member weekly pulse 快照（仅显式触发；pulse-daily 不跑）",
+        status="live",
+        pass_query=False,
+    ),
+    Route(
+        skill="superteam-report-insight",
+        script="superteam-report-insight/scripts/snapshot_pai.py",
+        keywords=[
+            "pulse pai", "pai 快照", "pai快照", "pai 日报", "pai日报",
+            "project lead 简报", "project lead简报", "pl 简报",
+            "pulse-pai", "pai daily", "pai snapshot",
+            "生成 pai", "pai 简报",
+        ],
+        description="PAI v2 Project Lead 项目简报（由 sprint 派生，superteam-report-insight）",
+        status="live",
+        pass_query=False,
+    ),
+    Route(
+        skill="superteam-pai",
+        script="superteam-pai/scripts/run_pai.py",
+        keywords=[
+            "superteam-pai", "/superteam-pai", "superteam pai",
+            # 编排全量 pulse（等同 run_reports.sh all / daily）
+            "更新看板", "刷新看板", "同步看板",
+            "今日 pulse", "今日pulse", "跑 pulse 全量", "pulse 全量", "全量 pulse", "pulse全量",
+            "四类 pulse", "pulse 入库", "跑 pulse 入库", "编排 pulse",
+            "pulse daily", "跑 daily", "执行 daily",
+        ],
+        description="PAI 调度框架：规则规划 + 子 skill 执行（B 方案）",
         status="live",
         pass_query=True,
     ),
@@ -150,6 +211,22 @@ ROUTES: list[Route] = [
         ],
         description="深度搜索 — 获取原始文档全文 (研究/创作模式)",
         status="live",
+    ),
+    # Knowledge-base pulse stats — sub-second answers from sp_trex_pulse snapshot
+    Route(
+        skill="superteam-sync",
+        script="superteam-sync/scripts/read_pulse.py",
+        keywords=[
+            "知识库有多少", "知识库总数", "知识库文档数", "知识库文档数量",
+            "今日同步", "今天同步", "今日新增", "今天新增",
+            "上次同步", "最近同步", "最近一次同步",
+            "同步了多少", "同步数量", "同步进度",
+            "总共有多少文档", "一共有多少文档", "多少文档",
+            "知识库状态", "kb stats", "kb status", "kb pulse",
+        ],
+        description="知识库数量/同步状态 (sp_trex_pulse 快照, 亚秒响应)",
+        status="live",
+        pass_query=False,
     ),
     # Default fallback — superteam-knowledgebase (semantic search)
     Route(
@@ -204,6 +281,32 @@ def classify_intents(query: str) -> list[tuple[Route, int]]:
         if not (SKILLS_ROOT / r.script).exists():
             continue
         out.append((r, s))
+    team_weekly = "superteam-report/scripts/generate_team_weekly_report.py"
+    personal_report = "superteam-report/scripts/generate_report.py"
+    snapshot_sprint = "superteam-report/scripts/snapshot_sprint.py"
+    snapshot_member = "superteam-report/scripts/snapshot_member.py"
+    snapshot_pai = "superteam-report-insight/scripts/snapshot_pai.py"
+    run_pai = "superteam-pai/scripts/run_pai.py"
+    pulse_scripts = {snapshot_sprint, snapshot_member, snapshot_pai}
+    linear_script = "superteam-linear/scripts/query_linear.py"
+    member_list = "superteam-member/scripts/list_members.py"
+    # 团队周报关键词命中时，不再跑个人脚本（否则「团队周报」会因子串「周报」双命中）
+    if any(r.script == team_weekly for r, _ in out):
+        out = [(r, s) for r, s in out if r.script != personal_report]
+    # 英文「team weekly …」会误命中 superteam-member 的「team」；已命中团队周报脚本时去掉成员列表误杀。
+    if any(r.script == team_weekly for r, _ in out):
+        out = [(r, s) for r, s in out if r.script != member_list]
+    # pulse 快照：去掉 linear 的 sprint/迭代 子串误杀；member 快照时去掉成员列表
+    if any(r.script in pulse_scripts for r, _ in out):
+        out = [(r, s) for r, s in out if r.script != linear_script]
+    if any(r.script == snapshot_member for r, _ in out):
+        out = [(r, s) for r, s in out if r.script != member_list]
+    # report-insight / superteam-pai 含子串 team，会误命中成员列表
+    if any(r.script == snapshot_pai for r, _ in out):
+        out = [(r, s) for r, s in out if r.script != member_list]
+    # 编排层命中时不再并行跑单步 pulse worker（避免双跑）
+    if any(r.script == run_pai for r, _ in out):
+        out = [(r, s) for r, s in out if r.script not in pulse_scripts]
     return out or [(ROUTES[-1], 0)]
 
 

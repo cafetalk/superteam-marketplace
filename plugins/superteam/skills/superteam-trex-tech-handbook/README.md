@@ -10,7 +10,7 @@
 - 三层结构：
   - [`common/`](common/) — 跨前后端通用规范（GitLab / 分支 / commit / 提测 / CI）
   - [`backend/`](backend/) — Java 后端规范（架构 / 微服务 / 编码 / RPC / 存储 / 日志 / 测试 / 安全 / 可观测性）
-  - [`frontend/`](frontend/) — 占位，下一阶段独立推进
+  - [`frontend/`](frontend/) — 前端规范（12 章 + appendix；环境 URL 见 [`frontend/12-environments.md`](frontend/12-environments.md)）
 
 ## 状态
 

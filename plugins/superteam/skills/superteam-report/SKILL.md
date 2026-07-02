@@ -1,6 +1,6 @@
 ---
 name: superteam-report
-description: Use when a team member asks to generate a weekly report — produces Markdown weekly reports from GitLab commits, MR records, and agent usage data
+description: Use when generating weekly reports — personal Markdown reports from GitLab/MR/agent data, or team-wide Linear Cycle reports for all Teams in the workspace
 ---
 
 # 智能周报生成
@@ -13,9 +13,13 @@ description: Use when a team member asks to generate a weekly report — produce
 
 `/superteam-report` 不带参数时，默认生成“上周（周一到周日）”周报；如需本周可在 query 中包含“本周”，或传 `--week this`。
 
+**路由关键词（`superteam/scripts/route.py`）**：单独说「**周报**」默认走**个人**脚本；含「团队 / 迭代 / 全团队…」等团队向短语时走团队脚本（二者不会同时执行）。**Pulse 快照**：`pulse 快照` / `trex pulse` / `TREX-493` / `sprint 日报` 等 → `snapshot_sprint.py`；`member 快照` / `成员负载快照` 等 → `snapshot_member.py`（仅显式触发；`pulse-daily` 不跑成员负载）。
+
 当前升级为 v3 模式（**数据脚本 + LLM 生成**）：脚本只负责采集结构化数据，周报正文由 skills 内 LLM 基于全量数据进行分析与写作。
 
 默认做法：先取 JSON 原始数据，再由 LLM 输出 Markdown 周报（非脚本固定模板）。
+
+**团队迭代周报**（全 workspace 各 Team 的当前 Cycle）为另一入口：见下文「团队迭代周报（Linear）」；由 `scripts/generate_team_weekly_report.py` 生成，不经过个人周报的 LLM 模板流程。
 
 内置前提条件校验：默认要求 `superteam-linear` 可访问；若 Linear MCP 不可用，将返回“前提条件未满足”并中止周报生成（可通过 `--require-linear false` 关闭）。
 
@@ -238,8 +242,126 @@ team member 通过 superteam 主动请求（如"帮我生成本周周报"），�
 | superteam-linear | 成员任务、状态、完成时间 | ✅ 已接入 |
 | superteam-git | 周期内提交、功能改动、影响分析 | ✅ 已接入 |
 
+## 团队迭代周报（Linear）
+
+团队迭代周报由 `skills/superteam-report/scripts/generate_team_weekly_report.py` 生成，面向 **当前 Linear workspace**。它按报告周（`--week`，默认上一自然周）合并各 Team 命中的 Cycle 任务，输出一份 Markdown 团队周报；正文止于 **团队风险**，风险项必须附判断依据。
+
+### 适用场景
+
+- 用户明确要「团队周报 / 迭代周报 / 全团队周报 / Cycle 周报」。
+- 需要按 Linear Cycle 汇总项目、成员、负载、风险，而不是生成某个人的研发周报。
+- 不适用于个人周报；个人周报走 `generate_report.py` 或 `scripts/run_reports.sh personal`。
+
+### 数据拉取口径
+
+- **Cycle 任务**：各 Team 必须用带 `cycle` 参数的 `list_issues` 拉取报告周 Cycle 内任务；全量 `list_issues(team)` 常缺少 `cycle` 字段，不能替代。跨 Team 按 issue key 去重。
+- **项目维度补充**：另拉全 Team 任务，用于项目阶段、项目分工、项目风险等跨 Cycle 判断。
+- **状态判定**：除 Team 状态显示名映射外，回退解析 issue 上的 `statusType`、`state.type`，避免旧工作流状态名未进入映射表时被误判。
+- **成员口径**：成员数据来自 `list_members()`（与 `superteam-member/scripts/list_members.py` 同源），先排除 `deleted` / `merged` / 无 role；研发名单为 `backend` / `frontend` / `architect`。
+- **禁止硬编码项目**：项目清单、阶段、过滤与统计不得按具体 Linear 项目名/id 写死；只能依赖 issue 数量与状态、project 时间、Lead/Milestone、成员角色等通用字段。
+
+### 项目纳入口径
+
+- **项目过滤**：以 `--week` 对应 ISO 周周一为界；解析出的发布日（提测/发布里程碑或 `targetDate`）严格早于该周一的项目，不进入周报项目清单，并从 Cycle 任务中按项目名剔除。当周及之后发布的项目仍纳入。
+- **未关联项目**：依赖 issue 上的 `project` / `projectName` 等字段；未关联 Project 的任务归入「未关联项目」。
+- **下个里程碑**：取 Linear Project Milestone 中最近一个未到期节点（名称 + 日期）；无未到期 Milestone 时回退下一提测/发布日。
+- **当前处理人**：仅当下个里程碑为「项目启动」时，列出该节点下未完成任务的 assignee；其他里程碑显示 `—`。
+
+### 项目阶段与进度口径
+
+- **项目阶段**：按整个项目任务 + 提测/发布里程碑推导，与「本 Cycle 是否做完」无关。
+- **启动中**：存在名称含「项目启动」的 Project Milestone，且该 Milestone 下仍有未完成任务；优先于日期口径。
+- **开发类阶段**：`启动中` / `开发中` / `联调中` / `设计中` / `延期开发中` 使用开发进度。开发进度优先取本 Cycle 且 assignee 为成员表 `backend` / `frontend` / `architect` 的任务；子集为空时退化为全量。
+- **测试类阶段**：`测试中` / `待发布` / `已上线` / `延期上线` 使用测试进度。测试进度优先测试职能指派；为空时回退 Bug 标签/标题口径；再为空则用全量。
+- **测试中展示**：项目阶段格追加本 Cycle Bug 数与未关闭数；风险列仍扫描全 Cycle。
+- **本 Cycle 已清**：若本 Cycle 已无未完成单，但全项目仍有未完成研发单，阶段为「开发中」时显示 `开发中·本Cycle已清`。
+
+### 输出结构
+
+团队周报按以下顺序生成：
+
+1. **项目一览**：基于 [Linear Projects](https://linear.app/t-rex-v1/projects/all)，展示 Lead、提测/发布时间、项目阶段、阶段进度、参与人、风险等。表头「进度（完成/进行中/待办+Backlog）」仅统计本 Cycle；「进行中」= Linear 状态类型 `Started`。
+2. **按项目**：每个项目输出 HTML 键值表（Leader / 里程碑 / 进度 / 参与人 / 风险）与分工表。分工表列为 **角色 | 负责人 | 任务**，角色与负责人列合并单元格；后端/前端/测试/其他分块；摘要最多 4 条明细，超长描述省略，超出按父单/主题合并。
+3. **按成员**：每人先输出「上周工作总结」「下周计划」各一句（由 Cycle 内任务自动归纳），再附独立 HTML 表格：**项目 | 任务ID | 状态 | 任务 | 剩余(天) | 风险**；项目列合并。
+4. **成员负载**：估点换算工时 `1→1h、2→2h、3→4h、4→8h、5→16h`；负载 = 当周合计工时 ÷ 40h。仅统计报告周内 `completedAt` 完成、当前进行中/In Review/受阻、以及 Todo 且 due 在本周的任务；更早完成不计；≥100% 标 🔥；按合计工时降序。
+5. **团队风险**：§4 后逐类列出触发项并附判断依据，包含受阻、久未更新、未分配、描述过短、高优堆积、逾期、负载偏高、里程碑偏紧、§1 项目风险汇总、启动中等。
+
+### 配置与发布
+
+- **Linear**：无需 Linear API Token。脚本使用本机 Linear MCP（`mcp-remote`）发起 OAuth，并通过 stdio JSON-RPC 调用 Linear MCP 工具。前置条件是已安装 Node.js（包含 `npx`）。
+- **Agent 会话**：若由模型代为拉取 Linear 数据，按 **superteam-linear** SKILL；优先使用当前 Agent 宿主已接入的 Linear MCP。
+- **钉钉发布**：团队周报默认自动上传。脚本先成功写入本地 Markdown，再上传钉钉；若上传失败会 `exit 1`，但本地文件保留。
+- **钉钉目录**：团队周报与个人周报共用同一钉钉父文件夹。上传前会在父目录下解析或创建 `YYYY/YYWww` 层级目录，例如 `2026-W15` → `2026/26W15`。
+- **`DINGTALK_MCP_URL`**：优先读环境变量或 `~/.superteam/config`；未设置时尝试从 `~/.cursor/mcp.json` 解析带 `dingtalk` 的 HTTP MCP 地址。配置解析成功后，先 `list_nodes` / 必要时 `create_folder`，再 `create_document`。
+- **`DINGTALK_REPORT_FOLDER_ID`**：可选，覆盖父文件夹 nodeId；不设则使用内置默认值。
+- **`--no-publish-dingtalk`**：仅生成本地文件，不尝试钉钉上传。
+- **SSL 证书问题**：若本机 Python 报 SSL 证书校验失败，可安装 `certifi`；脚本在已安装时会用其 CA 包访问 `mcp-gw.dingtalk.com`。
+
+### 团队周报命令
+
+```bash
+python3 skills/superteam-report/scripts/generate_team_weekly_report.py
+```
+
+常用参数：
+
+| 参数 | 说明 |
+|------|------|
+| 不传 `--week` | 自动使用上周（本地日历上一周一至周日）对应的本年度 ISO 周，输出 `reports/team-weekly/<ISO周>.md`，标题标注「上周」 |
+| `--week 2026-W15` | 手动指定 ISO 周 |
+| `--output ...` | 指定输出文件 |
+| `--dry-run` | 只打印将要拉取的 team/cycle 计划，不请求 issues |
+| `--format json` | stdout 输出 JSON，含 `markdown`、`publish` 元数据与 `dingtalk` 字段 |
+| `--no-publish-dingtalk` | 关闭生成后的自动钉钉上传 |
+| `--export-json` | 写入 `reports/team-weekly/json/` 下四类 JSON 分片；默认不写。TREX-493 日 pulse 请用 `snapshot_sprint.py` |
+| `--in-progress-snapshot` | 仅导出当前周 Cycle、进行中 Linear 项目、昨日（00:00–23:59）有活动的任务 JSON；默认写入 `reports/project-daily/`；不生成周报、不上传钉钉 |
+| `--json-filename-prefix <前缀>` | 覆盖 JSON 文件名前缀 |
+| `--json-dir <目录>` | 覆盖 JSON 落盘目录 |
+| `--uncycled-include-completed` | 「未划入迭代」计数包含已完成（Done）；默认不含 |
+| `--view dashboard\|text` | 迭代进度展示风格，默认 `dashboard` |
+| `--chart-style auto\|text\|mermaid\|dingtalk` | `auto` 在未上传钉钉时用 `mermaid`，上传钉钉时用 `dingtalk`；`dingtalk` 为表格 + 字符条，不含 Mermaid |
+| `--member-group all\|frontend\|backend\|前端\|后端` | 成员过滤。`backend/后端` 统计 backend + frontend + architect；`frontend/前端` 仅 frontend；`all` 不按 assignee 过滤。钉钉文档名会追加前端/后端后缀以避免覆盖 |
+
+### 定时入口与 Pulse 快照
+
+仓库根目录 `scripts/run_reports.sh` 是定时入口。不带参数或传 `all` 时，只跑 pulse 快照，不生成团队周报。
+
+| 子命令 | 频率 | 实现 |
+|--------|------|------|
+| 默认 / `all` | 每次 cron | `pulse-daily` → `pulse-task-daily` → `pulse-pai-daily` → `pulse-member-daily`，均入库 PG |
+| `pulse-daily` | 每天 | `snapshot_sprint.py --upload`，生成 sprint 项目日快照 |
+| `pulse-task-daily` | 每天 | `snapshot_task.py --upload`，生成 task 日快照 |
+| `pulse-pai-daily` | 每天，在 sprint 后 | 见 **superteam-report-insight**：`snapshot_pai.py --upload` |
+| `pulse-member-daily` | 每天 | `snapshot_member.py --upload`，生成快照日所在自然周成员快照 |
+| `pulse-member-weekly` | 每周，历史别名 | 同 `snapshot_member.py`；默认 `all` 已使用 `pulse-member-daily` |
+| `team-weekly` | 每周或按需 | `generate_team_weekly_report.py`，配置钉钉 MCP 时自动上传 |
+| `personal` | 单独 | `generate_report.py`，不在默认串联中 |
+
+Pulse payload 口径：
+
+- **`snapshot_sprint`**（`type=sprint`, `period=daily`）：与周报 §1 本迭代涉及的项目同源；`payload.projects[]` 含 `cycle_task_count`、`done` / `in_progress` / `todo` / `backlog` / `progress_done_pct` / `status_label` 等分列数字，便于按 `snapshot_date` 画折线。
+- **`snapshot_task`**（`type=task`, `period=daily`, `team=trex`）：`completed_today` / `in_review` 用全 workspace（仅 Planned/In Progress 项目）；`product_created_pending`（设计中的需求）在此基础上 **额外纳入 Backlog 状态 Linear Project**，且 issue **labels 含 `Requirement`**、状态为 Todo / Prd Review / Technical Review；`overdue` / `due_soon` / `team_summary` / `by_assignee` 与 `snapshot_member` 完全一致（**快照日所在 ISO 周** Cycle issue、无项目过滤、`members[]` 纳入规则与 `due_tasks` 累加相同）。`summary.overdue_count` / `due_soon_count` = `team_summary`。
+- **PAI**（`type=pai`）：见 skill **superteam-report-insight**（`skills/superteam-report-insight/SKILL.md`）。调度编排预留 **superteam-pai**。
+- **`snapshot_member`**（`type=member`, `period=weekly`, `team=trex`）：统计周 = `snapshot_date` 所在 ISO 周；`members[]` 覆盖成员表内全部工程/测试角色，**即使当周任务、负载、代码均为 0 也保留空记录**。每人含 `projects[]`、`totals`、`workload`、`due_tasks`、`code`、`risks`；与 sprint/PAI 分离。
+- **本地 JSON 保留**：`run_reports.sh pulse-daily` 入库成功后删除超过 `TREX_PULSE_RETAIN_DAYS`（默认 15）自然日的 `~/.superteam/pulse/<date>/` 目录；PostgreSQL 中历史快照不删。
+
+Cron 示例：
+
+```bash
+# 每天 8:00：pulse 入库
+0 8 * * *  cd /path/to/superteam && bash scripts/run_reports.sh >> ~/.superteam/logs/reports-all.log 2>&1
+
+# 单独生成团队周报
+bash scripts/run_reports.sh team-weekly
+
+# 单独跑 pulse 子项
+bash scripts/run_reports.sh pulse-daily
+bash scripts/run_reports.sh pulse-task-daily
+bash scripts/run_reports.sh pulse-pai-daily   # 见 superteam-report-insight
+bash scripts/run_reports.sh pulse-member-daily
+```
+
 ## 待设计事项
 
-- [ ] 多成员汇总模式（团队周报）
 - [ ] 历史周报存储与检索
 - [ ] 下周计划自动建议
